@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Human Validation Dashboard</title>
+<meta name="robots" content="noindex">
+<style>
+:root { --color-fg:#1f2328; --color-fg-muted:#59636e; --color-bg:#ffffff; --color-panel:#f6f7f9; --color-border-line:#d8dce1; --color-ok:#2a8a5c; --color-warn:#d9730d; --color-bad:#c0392b;
+  --font-anthropic-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; --font-anthropic-serif:Georgia,"Times New Roman",serif;
+  --cds-gap-md:12px; --cds-pad-md:12px; --cds-pad-lg:16px; --cds-radius:8px; --cds-chart-axis:#8b949e; --cds-chart-grid:#d8dce1; --cds-chart-reference:#6e7781;
+  --cds-surface-popover:#ffffff; --cds-border:#d0d7de; --cds-text-secondary:#424a53; --cds-shadow-popover:0 6px 18px rgba(0,0,0,.14); color-scheme:light; }
+@media (prefers-color-scheme: dark) { :root { --color-fg:#e6e8eb; --color-fg-muted:#9aa4af; --color-bg:#16181c; --color-panel:#1e2127; --color-border-line:#363b44; --color-ok:#4cc38a; --color-warn:#f0933a; --color-bad:#ef6f5e;
+  --cds-chart-axis:#6b7480; --cds-chart-grid:#363b44; --cds-chart-reference:#8b949e; --cds-surface-popover:#23272e; --cds-border:#3b414b; --cds-text-secondary:#c3cad2; --cds-shadow-popover:0 6px 18px rgba(0,0,0,.5); color-scheme:dark; } }
+html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); font-family: var(--font-anthropic-sans); font-size: 14px; }
+body { padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); }
+[hidden] { display: none !important; }
+.dash-select { appearance: none; font: inherit; color: var(--color-fg); background-color: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: 6px; padding: 5px 28px 5px 10px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-fg-muted) 50%), linear-gradient(135deg, var(--color-fg-muted) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+</style>
+</head>
+<body>
+<style>
+.hv { max-width: 1080px; margin: 0 auto; color: var(--color-fg); font-family: var(--font-anthropic-sans); line-height: 1.5; }
+.hv * { box-sizing: border-box; }
+.hv h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 30px; line-height: 1.2; margin: 0 0 8px; text-wrap: balance; }
+.hv h2 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+.hv h3 { font-size: 15px; font-weight: 600; margin: 28px 0 4px; }
+.hv p { margin: 0 0 10px; max-width: 72ch; }
+.hv .hv-lead { font-size: 16px; max-width: 78ch; }
+.hv .hv-sub { color: var(--color-fg-muted); }
+.hv b[data-draw] { font-variant-numeric: tabular-nums; font-weight: 600; }
+.hv-tabs { display: flex; gap: 4px; margin: 20px 0 24px; border-bottom: 1px solid var(--color-border-line); flex-wrap: wrap; }
+.hv-tab { appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 8px 14px; font: inherit; font-weight: 500; color: var(--color-fg-muted); cursor: pointer; }
+.hv-tab:hover { color: var(--color-fg); }
+.hv-tab[aria-selected="true"] { color: var(--color-fg); border-bottom-color: var(--color-fg); }
+.hv-tab:focus-visible, .hv .dash-select:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.hv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--cds-gap-md); margin: 16px 0 20px; }
+.hv-kpi { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md) var(--cds-pad-lg); min-width: 0; }
+.hv-kpi-n { display: block; font-family: var(--font-anthropic-serif); font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hv-kpi-n b[data-draw] { font-weight: 400; }
+.hv-kpi-l { display: block; margin-top: 4px; font-size: 12px; color: var(--color-fg-muted); }
+.hv-chart { position: relative; min-height: 220px; margin: 8px 0 4px; }
+.hv-chart svg { display: block; overflow: visible; }
+.hv-chart text { fill: var(--color-fg-muted); font-size: 12px; font-family: var(--font-anthropic-sans); }
+.hv-chart .hv-bold { fill: var(--color-fg); font-weight: 600; }
+.hv-chart .tick line, .hv-chart .domain { stroke: var(--cds-chart-axis, var(--color-border-line)); }
+.hv-chart .hv-grid line { stroke: var(--cds-chart-grid, var(--color-border-line)); stroke-opacity: .6; }
+.hv-chart .hv-grid .domain { display: none; }
+.hv-chart .hv-ref { stroke: var(--cds-chart-reference, var(--color-fg-muted)); stroke-dasharray: 4 4; fill: none; }
+.hv-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--color-fg-muted); margin: 0 0 4px; }
+.hv-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.hv-legend .hv-ok { background: var(--color-ok); }
+.hv-legend .hv-warn { background: var(--color-warn); }
+.hv-tip { position: absolute; z-index: 5; pointer-events: none; max-width: 300px; padding: 8px 10px; font-size: 12px; line-height: 1.4;
+  background: var(--cds-surface-popover, var(--color-panel)); border: 1px solid var(--cds-border, var(--color-border-line)); box-shadow: var(--cds-shadow-popover); border-radius: 6px; color: var(--cds-text-secondary, var(--color-fg)); }
+.hv-tip-h { font-weight: 600; color: var(--color-fg); margin-bottom: 2px; }
+.hv-scroll { overflow-x: auto; margin: 8px 0 4px; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+.hv-scroll.hv-tall { max-height: 460px; overflow-y: auto; }
+.hv table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.hv th, .hv td { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+.hv th { font-weight: 600; font-size: 12px; color: var(--color-fg-muted); background: var(--color-panel); position: sticky; top: 0; white-space: nowrap; }
+.hv td.hv-num, .hv th.hv-num { text-align: right; font-variant-numeric: tabular-nums; }
+.hv td.hv-wide { min-width: 260px; }
+.hv tr:last-child td { border-bottom: 0; }
+.hv-controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 12px 0 4px; font-size: 13px; }
+.hv-controls label { color: var(--color-fg-muted); margin-right: 6px; }
+.hv-callout { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md) var(--cds-pad-lg); margin: 0 0 16px; max-width: 78ch; }
+.hv-callout p:last-child { margin-bottom: 0; }
+.hv details { margin: 28px 0 0; border-top: 1px solid var(--color-border-line); padding-top: 12px; }
+.hv summary { cursor: pointer; font-weight: 600; }
+.hv ul { margin: 8px 0 0; padding-left: 20px; max-width: 78ch; }
+.hv li { margin-bottom: 4px; }
+.hv-src { font-size: 12px; color: var(--color-fg-muted); margin-top: 28px; }
+</style>
+
+<div class="hv">
+  <h1 id="top">Do people rate comments the way the LLM does?</h1>
+  <p class="hv-lead" id="lead">In the Agree/Disagree study, <b data-draw="num" data-source="a_headline" data-field="raters" data-row="0" data-fmt="int">&mdash;</b> raters judged the same <b data-draw="num" data-source="a_headline" data-field="comments" data-row="0" data-fmt="int">&mdash;</b> comments. Their consensus follows the LLM's rating closely (Spearman <b data-draw="num" data-source="a_headline" data-field="spearman_consensus" data-row="0" data-fmt="d2">&mdash;</b>), but they agree with each other only modestly (kappa <b data-draw="num" data-source="a_headline" data-field="kappa" data-row="0" data-fmt="d2">&mdash;</b>). In the 1&ndash;7 rating study, <b data-draw="num" data-source="r_headline" data-field="participants_used" data-row="0" data-fmt="int">&mdash;</b> raters rated <b data-draw="num" data-source="r_headline" data-field="comments" data-row="0" data-fmt="int">&mdash;</b> comments, with <b data-draw="num" data-source="r_headline" data-field="raters_per_comment_min" data-row="0" data-fmt="int">&mdash;</b> to <b data-draw="num" data-source="r_headline" data-field="raters_per_comment_max" data-row="0" data-fmt="int">&mdash;</b> raters on each. Their average follows the LLM less tightly (Spearman <b data-draw="num" data-source="r_headline" data-field="spearman_consensus" data-row="0" data-fmt="d2">&mdash;</b>).</p>
+
+  <nav class="hv-tabs" role="tablist" aria-label="Study">
+    <button class="hv-tab" role="tab" id="tab-agree" data-tab="agree" aria-selected="true">Agree/Disagree</button>
+    <button class="hv-tab" role="tab" id="tab-rating" data-tab="rating" aria-selected="false">1&ndash;7 rating</button>
+    <button class="hv-tab" role="tab" id="tab-compare" data-tab="compare" aria-selected="false">Compare</button>
+  </nav>
+
+  <!-- ============================ AGREE / DISAGREE ============================ -->
+  <section id="agree" data-panel="agree">
+    <h2>Agree/Disagree study</h2>
+    <p class="hv-sub">Every rater saw the same 30 comments, five for each of the six categories, and chose Agree or Disagree on whether the comment clearly expresses that category. Collected 13 November 2026.</p>
+
+    <div class="hv-kpis">
+      <div class="hv-kpi"><span class="hv-kpi-n"><b data-draw="num" data-source="a_headline" data-field="raters" data-row="0" data-fmt="int">&mdash;</b></span><span class="hv-kpi-l">raters, each rating all <b data-draw="num" data-source="a_headline" data-field="comments" data-row="0" data-fmt="int">&mdash;</b> comments</span></div>
+      <div class="hv-kpi"><span class="hv-kpi-n"><b data-draw="num" data-source="a_headline" data-field="spearman_consensus" data-row="0" data-fmt="d2">&mdash;</b></span><span class="hv-kpi-l">Spearman: share of raters who agreed vs the LLM's rating</span></div>
+      <div class="hv-kpi"><span class="hv-kpi-n"><b data-draw="num" data-source="a_headline" data-field="kappa" data-row="0" data-fmt="d2">&mdash;</b></span><span class="hv-kpi-l">kappa between raters (0 = chance, 1 = perfect)</span></div>
+      <div class="hv-kpi"><span class="hv-kpi-n"><b data-draw="num" data-source="a_headline" data-field="majority_matches_llm" data-row="0" data-fmt="int">&mdash;</b> of <b data-draw="num" data-source="a_headline" data-field="comments" data-row="0" data-fmt="int">&mdash;</b></span><span class="hv-kpi-l">comments where the raters' majority matches the LLM's hit/miss call (rating 4+ = hit)</span></div>
+      <div class="hv-kpi"><span class="hv-kpi-n"><b data-draw="num" data-source="a_headline" data-field="median_minutes" data-row="0" data-fmt="d1">&mdash;</b></span><span class="hv-kpi-l">median minutes to finish</span></div>
+    </div>
+
+    <h3 id="a-strip-h">How many raters agreed, at each LLM rating</h3>
+    <p>Averaged over comments, <b data-draw="num" data-source="a_by_llm" data-field="pct_agree" data-where="llm=1" data-fmt="int">&mdash;</b>% of raters agreed at LLM rating 1, <b data-draw="num" data-source="a_by_llm" data-field="pct_agree" data-where="llm=3" data-fmt="int">&mdash;</b>% at 3, <b data-draw="num" data-source="a_by_llm" data-field="pct_agree" data-where="llm=4" data-fmt="int">&mdash;</b>% at 4, <b data-draw="num" data-source="a_by_llm" data-field="pct_agree" data-where="llm=5" data-fmt="int">&mdash;</b>% at 5 and <b data-draw="num" data-source="a_by_llm" data-field="pct_agree" data-where="llm=6" data-fmt="int">&mdash;</b>% at 6. Raters are clear at the ends and split in the middle.</p>
+    <div class="hv-legend"><span><i class="hv-ok"></i>Raters' majority matches the LLM's hit/miss call</span><span><i class="hv-warn"></i>Majority does not match</span></div>
+    <div class="hv-chart" data-draw="a_strip" data-source="a_comments">—</div>
+
+    <h3 id="a-kappa-h">Agreement between raters, by category</h3>
+    <p>Kappa for the five comments in each category, with the range from resampling raters. With so few comments per category, treat these as rough. The last row uses all 30.</p>
+    <div class="hv-chart" data-draw="a_kappa" data-source="a_dimension">—</div>
+    <div class="hv-scroll"><table data-source="a_dimension" data-row-key="dimension">
+      <thead><tr><th data-field="dimension">Category</th><th class="hv-num" data-num="1" data-field="comments" data-fmt="int">Comments</th><th class="hv-num" data-num="1" data-field="kappa" data-fmt="d2">Kappa</th><th class="hv-num" data-num="1" data-field="kappa_lo" data-fmt="d2">Low</th><th class="hv-num" data-num="1" data-field="kappa_hi" data-fmt="d2">High</th><th class="hv-num" data-num="1" data-field="pairwise_agreement" data-fmt="int">Two raters agree (%)</th><th class="hv-num" data-num="1" data-field="unanimous_panel" data-fmt="int">3-rater panel unanimous (%)</th><th class="hv-num" data-num="1" data-field="majority_matches_llm" data-fmt="int">Majority matches LLM (%)</th></tr></thead>
+      <tbody data-draw="tbody"></tbody></table></div>
+
+    <h3 id="a-thr-h">Where to set the hit threshold</h3>
+    <p>Moving the LLM's hit threshold from 4 to 5 raises the share of LLM hits that raters endorse from <b data-draw="num" data-source="a_threshold" data-field="human_endorses_given_llm_hit" data-where="llm_cut=4" data-fmt="int">&mdash;</b>% to <b data-draw="num" data-source="a_threshold" data-field="human_endorses_given_llm_hit" data-where="llm_cut=5" data-fmt="int">&mdash;</b>%. It also drops the share of rater-endorsed comments the LLM catches from <b data-draw="num" data-source="a_threshold" data-field="llm_hit_given_human_endorses" data-where="llm_cut=4" data-fmt="int">&mdash;</b>% to <b data-draw="num" data-source="a_threshold" data-field="llm_hit_given_human_endorses" data-where="llm_cut=5" data-fmt="int">&mdash;</b>%. Overall agreement stays at <b data-draw="num" data-source="a_threshold" data-field="agreement" data-where="llm_cut=4" data-fmt="int">&mdash;</b>% for both.</p>
+    <div class="hv-scroll"><table data-source="a_threshold" data-row-key="llm_cut">
+      <thead><tr><th class="hv-num" data-num="1" data-field="llm_cut" data-fmt="int">LLM hit = rating of at least</th><th class="hv-num" data-num="1" data-field="llm_hits" data-fmt="int">Comments the LLM calls hits</th><th class="hv-num" data-num="1" data-field="human_endorsed" data-fmt="int">Comments the raters' majority endorses</th><th class="hv-num" data-num="1" data-field="agreement" data-fmt="int">Same call on (%)</th><th class="hv-num" data-num="1" data-field="human_endorses_given_llm_hit" data-fmt="int">LLM hits that raters endorse (%)</th><th class="hv-num" data-num="1" data-field="llm_hit_given_human_endorses" data-fmt="int">Rater-endorsed that LLM calls hits (%)</th></tr></thead>
+      <tbody data-draw="tbody"></tbody></table></div>
+
+    <h3 id="a-panel-h">What a random panel of three raters would have said</h3>
+    <p>Every possible three-person panel from the <b data-draw="num" data-source="a_headline" data-field="raters" data-row="0" data-fmt="int">&mdash;</b> raters, by whether the LLM called the comment a hit.</p>
+    <div class="hv-scroll"><table data-source="a_panel" data-row-key="group">
+      <thead><tr><th data-field="group">LLM call</th><th class="hv-num" data-num="1" data-field="comments" data-fmt="int">Comments</th><th class="hv-num" data-num="1" data-field="p30" data-fmt="int">3 of 3 Agree (%)</th><th class="hv-num" data-num="1" data-field="p21" data-fmt="int">2 of 3 (%)</th><th class="hv-num" data-num="1" data-field="p12" data-fmt="int">1 of 3 (%)</th><th class="hv-num" data-num="1" data-field="p03" data-fmt="int">0 of 3 (%)</th><th class="hv-num" data-num="1" data-field="majority_agree" data-fmt="int">Panel majority Agrees (%)</th></tr></thead>
+      <tbody data-draw="tbody"></tbody></table></div>
+
+    <h3 id="a-comments-h">The 30 comments</h3>
+    <div class="hv-controls"><span><label for="sel-acat">Category</label><select class="dash-select" id="sel-acat" data-state="acat">
+      <option value="">All categories</option><option>Sycophancy vs. Candor</option><option>Factual Grounding</option><option>Mind vs. Machine</option><option>Relational Warmth</option><option>Provider Integrity</option><option>Originality &amp; Authorship</option></select></span></div>
+    <div class="hv-scroll hv-tall"><table data-source="a_comments" data-row-key="item">
+      <thead><tr><th data-field="item">Item</th><th data-field="category">Category</th><th class="hv-num" data-num="1" data-field="llm" data-fmt="int">LLM rating</th><th class="hv-num" data-num="1" data-field="agreed" data-fmt="int">Raters who agreed (of 30)</th><th data-field="human_majority">Majority</th><th data-field="matches_llm">Matches LLM</th></tr></thead>
+      <tbody data-draw="tbody" data-filter="acat"></tbody></table></div>
+  </section>
+
+  <!-- ============================ 1-7 RATING ============================ -->
+  <section id="rating" data-panel="rating" hidden>
+    <h2>1&ndash;7 rating study</h2>
+    <p class="hv-sub">Raters rated how much each comment expresses its category, from 1 (not at all) to 7 (very much), on the same scale the LLM used. <b data-draw="num" data-source="r_headline" data-field="comments" data-row="0" data-fmt="int">&mdash;</b> comments in 10 forms of 18, three or four raters per comment. Collected 13&ndash;19 November 2026. <b data-draw="num" data-source="r_headline" data-field="failed_attention" data-row="0" data-fmt="int">&mdash;</b> of <b data-draw="num" data-source="r_headline" data-field="participants_finished" data-row="0" data-fmt="int">&mdash;</b> finished raters failed the attention check and are left out.</p>
+
+    <div class="hv-kpis">
+      <div class="hv-kpi"><span class="hv-kpi-n"><b data-draw="num" data-source="r_headline" data-field="participants_used" data-row="0" data-fmt="int">&mdash;</b></span><span class="hv-kpi-l">raters used, <b data-draw="num" data-source="r_headline" data-field="ratings" data-row="0" data-fmt="int">&mdash;</b> ratings</span></div>
+      <div class="hv-kpi"><span class="hv-kpi-n"><b data-draw="num" data-source="r_headline" data-field="spearman_consensus" data-row="0" data-fmt="d2">&mdash;</b></span><span class="hv-kpi-l">Spearman: mean rating per comment vs the LLM's rating</span></div>
+      <div class="hv-kpi"><span class="hv-kpi-n"><b data-draw="num" data-source="r_headline" data-field="spearman_single_rater" data-row="0" data-fmt="d2">&mdash;</b></span><span class="hv-kpi-l">Spearman for single ratings</span></div>
+      <div class="hv-kpi"><span class="hv-kpi-n"><b data-draw="num" data-source="r_headline" data-field="icc_single" data-row="0" data-fmt="d2">&mdash;</b></span><span class="hv-kpi-l">agreement between raters (ICC, one rater)</span></div>
+      <div class="hv-kpi"><span class="hv-kpi-n"><b data-draw="num" data-source="r_headline" data-field="median_minutes" data-row="0" data-fmt="d1">&mdash;</b></span><span class="hv-kpi-l">median minutes to finish</span></div>
+    </div>
+
+    <p>Raters are no more generous than the LLM overall (average difference <b data-draw="num" data-source="r_headline" data-field="mean_diff" data-row="0" data-fmt="d2">&mdash;</b> points), but only <b data-draw="num" data-source="r_headline" data-field="within_one_point" data-row="0" data-fmt="int">&mdash;</b>% of single ratings fall within one point of the LLM's. The mean of the raters on a comment is more stable: ICC <b data-draw="num" data-source="r_headline" data-field="icc_mean" data-row="0" data-fmt="d2">&mdash;</b> against <b data-draw="num" data-source="r_headline" data-field="icc_single" data-row="0" data-fmt="d2">&mdash;</b> for one rater. Two raters on the same form correlate at <b data-draw="num" data-source="r_headline" data-field="pairwise_spearman" data-row="0" data-fmt="d2">&mdash;</b> on average.</p>
+
+    <h3 id="r-scatter-h">Each comment: average human rating against the LLM's rating</h3>
+    <p>One dot per comment. Dots on the dashed line would match the LLM exactly. Orange dots are two or more points away.</p>
+    <div class="hv-chart" data-draw="r_scatter" data-source="r_comments">—</div>
+
+    <h3 id="r-bars-h">Average human rating at each LLM rating</h3>
+    <div class="hv-chart" data-draw="r_bars" data-source="r_by_llm">—</div>
+
+    <h3 id="r-cat-h">By category</h3>
+    <div class="hv-scroll"><table data-source="r_by_category" data-row-key="category">
+      <thead><tr><th data-field="category">Category</th><th class="hv-num" data-num="1" data-field="comments" data-fmt="int">Comments</th><th class="hv-num" data-num="1" data-field="spearman_consensus" data-fmt="d2">Spearman, mean rating</th><th class="hv-num" data-num="1" data-field="spearman_single" data-fmt="d2">Spearman, single ratings</th><th class="hv-num" data-num="1" data-field="mean_diff" data-fmt="d2">Human minus LLM</th><th class="hv-num" data-num="1" data-field="icc_single" data-fmt="d2">ICC, one rater</th><th class="hv-num" data-num="1" data-field="kappa_cut4" data-fmt="d2">Kappa (4+ = Agree)</th><th class="hv-num" data-num="1" data-field="agree_cut4" data-fmt="int">Same hit/miss call (%)</th></tr></thead>
+      <tbody data-draw="tbody"></tbody></table></div>
+
+    <h3 id="r-thr-h">Where to set the hit threshold</h3>
+    <p>A comment counts as endorsed by humans when its mean rating reaches the human cut-off. At 4 on both sides, the LLM and the raters make the same call on <b data-draw="num" data-source="r_threshold" data-field="agreement" data-where="llm_cut=4&amp;human_cut=4" data-fmt="int">&mdash;</b>% of comments. At 5 on both sides it is <b data-draw="num" data-source="r_threshold" data-field="agreement" data-where="llm_cut=5&amp;human_cut=5" data-fmt="int">&mdash;</b>%.</p>
+    <div class="hv-scroll"><table data-source="r_threshold" data-row-key="llm_cut,human_cut">
+      <thead><tr><th class="hv-num" data-num="1" data-field="llm_cut" data-fmt="int">LLM hit = rating of at least</th><th class="hv-num" data-num="1" data-field="human_cut" data-fmt="int">Human mean of at least</th><th class="hv-num" data-num="1" data-field="llm_hits" data-fmt="int">LLM hits</th><th class="hv-num" data-num="1" data-field="human_endorsed" data-fmt="int">Human-endorsed</th><th class="hv-num" data-num="1" data-field="agreement" data-fmt="int">Same call on (%)</th><th class="hv-num" data-num="1" data-field="human_endorses_given_llm_hit" data-fmt="int">LLM hits that humans endorse (%)</th><th class="hv-num" data-num="1" data-field="llm_hit_given_human_endorses" data-fmt="int">Human-endorsed that LLM calls hits (%)</th></tr></thead>
+      <tbody data-draw="tbody"></tbody></table></div>
+
+    <h3 id="r-comments-h">The <b data-draw="num" data-source="r_headline" data-field="comments" data-row="0" data-fmt="int">&mdash;</b> comments</h3>
+    <div class="hv-controls">
+      <span><label for="sel-rcat">Category</label><select class="dash-select" id="sel-rcat" data-state="rcat">
+        <option value="">All categories</option><option>Sycophancy vs. Candor</option><option>Factual Grounding</option><option>Mind vs. Machine</option><option>Relational Warmth</option><option>Provider Integrity</option><option>Originality &amp; Authorship</option></select></span>
+      <span><label for="sel-rsort">Order</label><select class="dash-select" id="sel-rsort" data-state="rsort">
+        <option value="">Category, then LLM rating</option><option value="gap">Largest gap from the LLM first</option><option value="llm">LLM rating, high to low</option></select></span>
+    </div>
+    <div class="hv-scroll hv-tall"><table data-source="r_comments" data-row-key="item">
+      <thead><tr><th data-field="item">Item</th><th data-field="category">Category</th><th class="hv-num" data-num="1" data-field="llm" data-fmt="int">LLM</th><th class="hv-num" data-num="1" data-field="mean" data-fmt="d2">Mean human</th><th class="hv-num" data-num="1" data-field="diff" data-fmt="d2">Gap</th><th class="hv-num" data-num="1" data-field="raters" data-fmt="int">Raters</th><th class="hv-num" data-num="1" data-field="lowest" data-fmt="int">Low</th><th class="hv-num" data-num="1" data-field="highest" data-fmt="int">High</th></tr></thead>
+      <tbody data-draw="tbody" data-filter="rcat" data-sort="rsort"></tbody></table></div>
+
+    <details>
+      <summary>Rater timing and quality checks</summary>
+      <p class="hv-sub">Raters are anonymised. A flag is advice for approving or rejecting in CloudResearch.</p>
+      <div class="hv-scroll hv-tall"><table data-source="r_participants" data-row-key="rater">
+        <thead><tr><th data-field="rater">Rater</th><th class="hv-num" data-num="1" data-field="form" data-fmt="int">Form</th><th class="hv-num" data-num="1" data-field="minutes" data-fmt="d1">Minutes</th><th class="hv-num" data-num="1" data-field="median_sec" data-fmt="d1">Median seconds per comment</th><th data-field="attention">Attention check</th><th class="hv-num" data-num="1" data-field="spearman_with_llm" data-fmt="d2">Spearman with LLM</th><th data-field="flags">Flags</th></tr></thead>
+        <tbody data-draw="tbody"></tbody></table></div>
+    </details>
+  </section>
+
+  <!-- ============================ COMPARE ============================ -->
+  <section id="compare" data-panel="compare" hidden>
+    <h2>Compare the two formats</h2>
+    <div class="hv-callout">
+      <p><b>No comment has been rated in both formats yet.</b> The Agree/Disagree study ran on 30 pilot comments and the rating study on 180 different ones. The Agree/Disagree survey for the 180 comments is built but has not been launched. Until it runs, this page sets the same statistics side by side on different comments, with different raters.</p>
+    </div>
+
+    <p>With three raters per comment, the two formats follow the LLM about equally well: Spearman <b data-draw="num" data-source="a_headline" data-field="spearman_three_raters" data-row="0" data-fmt="d2">&mdash;</b> for Agree/Disagree against <b data-draw="num" data-source="r_headline" data-field="spearman_three_raters" data-row="0" data-fmt="d2">&mdash;</b> for the 1&ndash;7 scale. Agree/Disagree reaches <b data-draw="num" data-source="a_headline" data-field="spearman_consensus" data-row="0" data-fmt="d2">&mdash;</b> only because it has <b data-draw="num" data-source="a_headline" data-field="raters" data-row="0" data-fmt="int">&mdash;</b> raters on each comment. Raters do not agree more on the 1&ndash;7 scale: when ratings of 4 or higher are treated as Agree, kappa is <b data-draw="num" data-source="r_headline" data-field="kappa_cut4" data-row="0" data-fmt="d2">&mdash;</b>, against <b data-draw="num" data-source="a_headline" data-field="kappa" data-row="0" data-fmt="d2">&mdash;</b> for Agree/Disagree.</p>
+
+    <h3 id="c-table-h">Same statistics, both studies</h3>
+    <div class="hv-scroll"><table data-source="c_metrics" data-row-key="metric">
+      <thead><tr><th data-field="metric">Measure</th><th data-field="agree">Agree/Disagree</th><th data-field="rating">1&ndash;7 rating</th><th data-field="note">Note</th></tr></thead>
+      <tbody data-draw="tbody"></tbody></table></div>
+
+    <h3 id="c-line-h">How often raters endorse a comment, by the LLM's rating</h3>
+    <p>For Agree/Disagree, the share of raters who chose Agree. For the 1&ndash;7 scale, the share of ratings at 4 or higher and at 5 or higher. The Agree/Disagree pilot had no comments rated 7.</p>
+    <div class="hv-chart" data-draw="c_line" data-source="c_calibration">—</div>
+
+    <h3 id="c-next-h">What a head-to-head needs</h3>
+    <ul>
+      <li>Launch the Agree/Disagree survey on the same 180 comments, with three raters per comment.</li>
+      <li>Exclude everyone who took the rating study or an earlier pilot, so no one rates the same comment twice.</li>
+      <li>Then this tab can show each comment's Agree share beside its mean rating, and the rater agreement for the same comments in both formats.</li>
+    </ul>
+  </section>
+
+  <details>
+    <summary>Definitions and notes</summary>
+    <ul>
+      <li><b>LLM hit</b>: the LLM rated the comment 4 or higher on its category. The tables also try 5 and 6.</li>
+      <li><b>Spearman</b>: how closely the human numbers follow the LLM's ranking across comments. 1 is a perfect match, 0 is none.</li>
+      <li><b>Kappa</b>: agreement between raters on Agree/Disagree beyond what chance gives. About half of all answers were Agree, so a lot of agreement is expected by chance.</li>
+      <li><b>ICC</b>: the share of variation in 1&ndash;7 ratings that comes from differences between comments rather than between raters. One-way random effects, for unequal numbers of raters per comment.</li>
+      <li><b>3-rater consensus</b>: the average, over random panels of three raters per comment, of the correlation with the LLM.</li>
+      <li><b>Sampling</b>: comments were drawn in bands of the LLM's rating within each category, so both studies contain more high and low ratings than the full corpus. These are checks of agreement, not estimates of how common a category is.</li>
+      <li><b>Exclusion</b>: one rater in the rating study failed the attention check. One more was flagged as fast but kept.</li>
+    </ul>
+  </details>
+  <p class="hv-src">Numbers are a snapshot of the Qualtrics exports of 13 and 19 November 2026, rebuilt with build_dashboard_data.py.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+
+const DATA = {"tables": {"r_comments": [{"item": "F10-FAC-03", "category": "Factual Grounding", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.33, "sd": 0.58, "lowest": 1, "highest": 2, "diff": 0.33}, {"item": "F4-FAC-01", "category": "Factual Grounding", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 4.0, "sd": 3.0, "lowest": 1, "highest": 7, "diff": 3.0}, {"item": "F8-FAC-01", "category": "Factual Grounding", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.33, "sd": 0.58, "lowest": 1, "highest": 2, "diff": 0.33}, {"item": "F8-FAC-02", "category": "Factual Grounding", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": 0.0}, {"item": "F4-FAC-02", "category": "Factual Grounding", "stratum": "miss_1_2", "llm": 2, "raters": 3, "mean": 3.67, "sd": 2.52, "lowest": 1, "highest": 6, "diff": 1.67}, {"item": "F6-FAC-01", "category": "Factual Grounding", "stratum": "miss_1_2", "llm": 2, "raters": 3, "mean": 2.67, "sd": 2.89, "lowest": 1, "highest": 6, "diff": 0.67}, {"item": "F6-FAC-03", "category": "Factual Grounding", "stratum": "miss_1_2", "llm": 2, "raters": 3, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": -1.0}, {"item": "F1-FAC-03", "category": "Factual Grounding", "stratum": "miss_3", "llm": 3, "raters": 4, "mean": 4.5, "sd": 1.91, "lowest": 3, "highest": 7, "diff": 1.5}, {"item": "F10-FAC-01", "category": "Factual Grounding", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.0, "sd": 1.73, "lowest": 2, "highest": 5, "diff": 0.0}, {"item": "F2-FAC-01", "category": "Factual Grounding", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.33, "sd": 0.58, "lowest": 3, "highest": 4, "diff": 0.33}, {"item": "F2-FAC-03", "category": "Factual Grounding", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.0, "sd": 3.46, "lowest": 1, "highest": 7, "diff": 0.0}, {"item": "F3-FAC-02", "category": "Factual Grounding", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 1.67, "sd": 1.15, "lowest": 1, "highest": 3, "diff": -1.33}, {"item": "F5-FAC-01", "category": "Factual Grounding", "stratum": "miss_3", "llm": 3, "raters": 4, "mean": 2.75, "sd": 2.06, "lowest": 1, "highest": 5, "diff": -0.25}, {"item": "F7-FAC-01", "category": "Factual Grounding", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 4.33, "sd": 1.53, "lowest": 3, "highest": 6, "diff": 1.33}, {"item": "F9-FAC-02", "category": "Factual Grounding", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 2.33, "sd": 2.31, "lowest": 1, "highest": 5, "diff": -0.67}, {"item": "F1-FAC-02", "category": "Factual Grounding", "stratum": "hit_4", "llm": 4, "raters": 4, "mean": 3.25, "sd": 1.5, "lowest": 2, "highest": 5, "diff": -0.75}, {"item": "F3-FAC-03", "category": "Factual Grounding", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 3.0, "sd": 1.73, "lowest": 2, "highest": 5, "diff": -1.0}, {"item": "F5-FAC-02", "category": "Factual Grounding", "stratum": "hit_4", "llm": 4, "raters": 4, "mean": 4.75, "sd": 2.63, "lowest": 1, "highest": 7, "diff": 0.75}, {"item": "F7-FAC-03", "category": "Factual Grounding", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 1.33, "sd": 0.58, "lowest": 1, "highest": 2, "diff": -2.67}, {"item": "F9-FAC-03", "category": "Factual Grounding", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 5.0, "sd": 2.0, "lowest": 3, "highest": 7, "diff": 1.0}, {"item": "F10-FAC-02", "category": "Factual Grounding", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 5.33, "sd": 1.15, "lowest": 4, "highest": 6, "diff": 0.33}, {"item": "F2-FAC-02", "category": "Factual Grounding", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 5.33, "sd": 1.53, "lowest": 4, "highest": 7, "diff": 0.33}, {"item": "F4-FAC-03", "category": "Factual Grounding", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 4.67, "sd": 3.21, "lowest": 1, "highest": 7, "diff": -0.33}, {"item": "F6-FAC-02", "category": "Factual Grounding", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 3.67, "sd": 2.52, "lowest": 1, "highest": 6, "diff": -1.33}, {"item": "F8-FAC-03", "category": "Factual Grounding", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 4.0, "sd": 2.65, "lowest": 1, "highest": 6, "diff": -1.0}, {"item": "F1-FAC-01", "category": "Factual Grounding", "stratum": "hit_6_7", "llm": 6, "raters": 4, "mean": 5.0, "sd": 2.16, "lowest": 2, "highest": 7, "diff": -1.0}, {"item": "F3-FAC-01", "category": "Factual Grounding", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 4.0, "sd": 2.65, "lowest": 1, "highest": 6, "diff": -2.0}, {"item": "F5-FAC-03", "category": "Factual Grounding", "stratum": "hit_6_7", "llm": 6, "raters": 4, "mean": 4.0, "sd": 2.58, "lowest": 1, "highest": 7, "diff": -2.0}, {"item": "F7-FAC-02", "category": "Factual Grounding", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 4.67, "sd": 1.53, "lowest": 3, "highest": 6, "diff": -1.33}, {"item": "F9-FAC-01", "category": "Factual Grounding", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 4.33, "sd": 2.08, "lowest": 2, "highest": 6, "diff": -1.67}, {"item": "F10-MIN-01", "category": "Mind vs. Machine", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 3.33, "sd": 2.52, "lowest": 1, "highest": 6, "diff": 2.33}, {"item": "F2-MIN-01", "category": "Mind vs. Machine", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 2.0, "sd": 1.73, "lowest": 1, "highest": 4, "diff": 1.0}, {"item": "F2-MIN-03", "category": "Mind vs. Machine", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 3.0, "sd": 3.46, "lowest": 1, "highest": 7, "diff": 2.0}, {"item": "F5-MIN-03", "category": "Mind vs. Machine", "stratum": "miss_1_2", "llm": 1, "raters": 4, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": 0.0}, {"item": "F6-MIN-02", "category": "Mind vs. Machine", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 3.0, "sd": 3.46, "lowest": 1, "highest": 7, "diff": 2.0}, {"item": "F7-MIN-03", "category": "Mind vs. Machine", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 2.67, "sd": 1.53, "lowest": 1, "highest": 4, "diff": 1.67}, {"item": "F8-MIN-01", "category": "Mind vs. Machine", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 6.0, "sd": 1.73, "lowest": 4, "highest": 7, "diff": 5.0}, {"item": "F1-MIN-02", "category": "Mind vs. Machine", "stratum": "miss_3", "llm": 3, "raters": 4, "mean": 3.5, "sd": 2.89, "lowest": 1, "highest": 6, "diff": 0.5}, {"item": "F10-MIN-02", "category": "Mind vs. Machine", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 4.67, "sd": 1.15, "lowest": 4, "highest": 6, "diff": 1.67}, {"item": "F3-MIN-03", "category": "Mind vs. Machine", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 2.33, "sd": 1.15, "lowest": 1, "highest": 3, "diff": -0.67}, {"item": "F4-MIN-01", "category": "Mind vs. Machine", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.33, "sd": 2.08, "lowest": 1, "highest": 5, "diff": 0.33}, {"item": "F4-MIN-02", "category": "Mind vs. Machine", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.67, "sd": 2.52, "lowest": 1, "highest": 6, "diff": 0.67}, {"item": "F6-MIN-03", "category": "Mind vs. Machine", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 2.33, "sd": 2.31, "lowest": 1, "highest": 5, "diff": -0.67}, {"item": "F8-MIN-03", "category": "Mind vs. Machine", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 4.0, "sd": 2.0, "lowest": 2, "highest": 6, "diff": 1.0}, {"item": "F9-MIN-02", "category": "Mind vs. Machine", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 4.0, "sd": 1.73, "lowest": 2, "highest": 5, "diff": 1.0}, {"item": "F10-MIN-03", "category": "Mind vs. Machine", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 3.67, "sd": 2.08, "lowest": 2, "highest": 6, "diff": -0.33}, {"item": "F2-MIN-02", "category": "Mind vs. Machine", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 1.33, "sd": 0.58, "lowest": 1, "highest": 2, "diff": -2.67}, {"item": "F4-MIN-03", "category": "Mind vs. Machine", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 6.0, "sd": 0.0, "lowest": 6, "highest": 6, "diff": 2.0}, {"item": "F6-MIN-01", "category": "Mind vs. Machine", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 4.67, "sd": 3.21, "lowest": 1, "highest": 7, "diff": 0.67}, {"item": "F8-MIN-02", "category": "Mind vs. Machine", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 2.33, "sd": 2.31, "lowest": 1, "highest": 5, "diff": -1.67}, {"item": "F1-MIN-01", "category": "Mind vs. Machine", "stratum": "hit_5", "llm": 5, "raters": 4, "mean": 4.5, "sd": 1.29, "lowest": 3, "highest": 6, "diff": -0.5}, {"item": "F3-MIN-02", "category": "Mind vs. Machine", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 4.33, "sd": 1.53, "lowest": 3, "highest": 6, "diff": -0.67}, {"item": "F5-MIN-02", "category": "Mind vs. Machine", "stratum": "hit_5", "llm": 5, "raters": 4, "mean": 5.75, "sd": 0.96, "lowest": 5, "highest": 7, "diff": 0.75}, {"item": "F7-MIN-02", "category": "Mind vs. Machine", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 2.67, "sd": 2.08, "lowest": 1, "highest": 5, "diff": -2.33}, {"item": "F9-MIN-03", "category": "Mind vs. Machine", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 2.33, "sd": 1.53, "lowest": 1, "highest": 4, "diff": -2.67}, {"item": "F3-MIN-01", "category": "Mind vs. Machine", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 4.33, "sd": 1.53, "lowest": 3, "highest": 6, "diff": -1.67}, {"item": "F5-MIN-01", "category": "Mind vs. Machine", "stratum": "hit_6_7", "llm": 6, "raters": 4, "mean": 6.25, "sd": 0.96, "lowest": 5, "highest": 7, "diff": 0.25}, {"item": "F7-MIN-01", "category": "Mind vs. Machine", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 4.33, "sd": 1.53, "lowest": 3, "highest": 6, "diff": -1.67}, {"item": "F9-MIN-01", "category": "Mind vs. Machine", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 5.33, "sd": 2.08, "lowest": 3, "highest": 7, "diff": -0.67}, {"item": "F1-MIN-03", "category": "Mind vs. Machine", "stratum": "hit_6_7", "llm": 7, "raters": 4, "mean": 3.0, "sd": 2.16, "lowest": 1, "highest": 6, "diff": -4.0}, {"item": "F1-ORI-03", "category": "Originality & Authorship", "stratum": "miss_1_2", "llm": 1, "raters": 4, "mean": 1.25, "sd": 0.5, "lowest": 1, "highest": 2, "diff": 0.25}, {"item": "F10-ORI-01", "category": "Originality & Authorship", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 2.67, "sd": 2.89, "lowest": 1, "highest": 6, "diff": 1.67}, {"item": "F3-ORI-01", "category": "Originality & Authorship", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 3.33, "sd": 2.52, "lowest": 1, "highest": 6, "diff": 2.33}, {"item": "F5-ORI-01", "category": "Originality & Authorship", "stratum": "miss_1_2", "llm": 1, "raters": 4, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": 0.0}, {"item": "F5-ORI-03", "category": "Originality & Authorship", "stratum": "miss_1_2", "llm": 1, "raters": 4, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": 0.0}, {"item": "F7-ORI-01", "category": "Originality & Authorship", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.67, "sd": 1.15, "lowest": 1, "highest": 3, "diff": 0.67}, {"item": "F9-ORI-03", "category": "Originality & Authorship", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 3.0, "sd": 3.46, "lowest": 1, "highest": 7, "diff": 2.0}, {"item": "F1-ORI-02", "category": "Originality & Authorship", "stratum": "miss_3", "llm": 3, "raters": 4, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": -2.0}, {"item": "F2-ORI-01", "category": "Originality & Authorship", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 1.67, "sd": 1.15, "lowest": 1, "highest": 3, "diff": -1.33}, {"item": "F3-ORI-02", "category": "Originality & Authorship", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 2.33, "sd": 1.53, "lowest": 1, "highest": 4, "diff": -0.67}, {"item": "F4-ORI-01", "category": "Originality & Authorship", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 5.67, "sd": 0.58, "lowest": 5, "highest": 6, "diff": 2.67}, {"item": "F6-ORI-02", "category": "Originality & Authorship", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 4.0, "sd": 2.0, "lowest": 2, "highest": 6, "diff": 1.0}, {"item": "F7-ORI-02", "category": "Originality & Authorship", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 4.0, "sd": 1.73, "lowest": 2, "highest": 5, "diff": 1.0}, {"item": "F8-ORI-01", "category": "Originality & Authorship", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 2.33, "sd": 1.15, "lowest": 1, "highest": 3, "diff": -0.67}, {"item": "F9-ORI-02", "category": "Originality & Authorship", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.0, "sd": 3.46, "lowest": 1, "highest": 7, "diff": 0.0}, {"item": "F1-ORI-01", "category": "Originality & Authorship", "stratum": "hit_4", "llm": 4, "raters": 4, "mean": 5.0, "sd": 2.0, "lowest": 2, "highest": 6, "diff": 1.0}, {"item": "F3-ORI-03", "category": "Originality & Authorship", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 1.67, "sd": 1.15, "lowest": 1, "highest": 3, "diff": -2.33}, {"item": "F5-ORI-02", "category": "Originality & Authorship", "stratum": "hit_4", "llm": 4, "raters": 4, "mean": 2.25, "sd": 1.89, "lowest": 1, "highest": 5, "diff": -1.75}, {"item": "F7-ORI-03", "category": "Originality & Authorship", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 5.67, "sd": 1.15, "lowest": 5, "highest": 7, "diff": 1.67}, {"item": "F9-ORI-01", "category": "Originality & Authorship", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 4.33, "sd": 2.52, "lowest": 2, "highest": 7, "diff": 0.33}, {"item": "F10-ORI-03", "category": "Originality & Authorship", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 4.0, "sd": 2.65, "lowest": 1, "highest": 6, "diff": -1.0}, {"item": "F2-ORI-03", "category": "Originality & Authorship", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 3.33, "sd": 3.21, "lowest": 1, "highest": 7, "diff": -1.67}, {"item": "F4-ORI-03", "category": "Originality & Authorship", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 5.33, "sd": 1.15, "lowest": 4, "highest": 6, "diff": 0.33}, {"item": "F6-ORI-01", "category": "Originality & Authorship", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 4.33, "sd": 2.89, "lowest": 1, "highest": 6, "diff": -0.67}, {"item": "F8-ORI-02", "category": "Originality & Authorship", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 7.0, "sd": 0.0, "lowest": 7, "highest": 7, "diff": 2.0}, {"item": "F10-ORI-02", "category": "Originality & Authorship", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 5.67, "sd": 0.58, "lowest": 5, "highest": 6, "diff": -0.33}, {"item": "F2-ORI-02", "category": "Originality & Authorship", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 4.0, "sd": 0.0, "lowest": 4, "highest": 4, "diff": -2.0}, {"item": "F4-ORI-02", "category": "Originality & Authorship", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 4.67, "sd": 3.21, "lowest": 1, "highest": 7, "diff": -1.33}, {"item": "F6-ORI-03", "category": "Originality & Authorship", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 6.67, "sd": 0.58, "lowest": 6, "highest": 7, "diff": 0.67}, {"item": "F8-ORI-03", "category": "Originality & Authorship", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 5.0, "sd": 1.73, "lowest": 4, "highest": 7, "diff": -1.0}, {"item": "F1-PRO-02", "category": "Provider Integrity", "stratum": "miss_1_2", "llm": 1, "raters": 4, "mean": 1.5, "sd": 0.58, "lowest": 1, "highest": 2, "diff": 0.5}, {"item": "F10-PRO-03", "category": "Provider Integrity", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": 0.0}, {"item": "F3-PRO-03", "category": "Provider Integrity", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 2.0, "sd": 1.73, "lowest": 1, "highest": 4, "diff": 1.0}, {"item": "F5-PRO-01", "category": "Provider Integrity", "stratum": "miss_1_2", "llm": 1, "raters": 4, "mean": 2.5, "sd": 3.0, "lowest": 1, "highest": 7, "diff": 1.5}, {"item": "F5-PRO-02", "category": "Provider Integrity", "stratum": "miss_1_2", "llm": 1, "raters": 4, "mean": 1.5, "sd": 1.0, "lowest": 1, "highest": 3, "diff": 0.5}, {"item": "F7-PRO-01", "category": "Provider Integrity", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 2.0, "sd": 1.73, "lowest": 1, "highest": 4, "diff": 1.0}, {"item": "F9-PRO-03", "category": "Provider Integrity", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 3.0, "sd": 1.0, "lowest": 2, "highest": 4, "diff": 2.0}, {"item": "F1-PRO-01", "category": "Provider Integrity", "stratum": "miss_3", "llm": 3, "raters": 4, "mean": 3.0, "sd": 1.41, "lowest": 1, "highest": 4, "diff": 0.0}, {"item": "F2-PRO-03", "category": "Provider Integrity", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 2.33, "sd": 1.53, "lowest": 1, "highest": 4, "diff": -0.67}, {"item": "F3-PRO-01", "category": "Provider Integrity", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.67, "sd": 2.08, "lowest": 2, "highest": 6, "diff": 0.67}, {"item": "F4-PRO-01", "category": "Provider Integrity", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 4.33, "sd": 2.89, "lowest": 1, "highest": 6, "diff": 1.33}, {"item": "F6-PRO-03", "category": "Provider Integrity", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.33, "sd": 2.31, "lowest": 2, "highest": 6, "diff": 0.33}, {"item": "F7-PRO-03", "category": "Provider Integrity", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.67, "sd": 1.53, "lowest": 2, "highest": 5, "diff": 0.67}, {"item": "F8-PRO-01", "category": "Provider Integrity", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 2.33, "sd": 2.31, "lowest": 1, "highest": 5, "diff": -0.67}, {"item": "F9-PRO-01", "category": "Provider Integrity", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.0, "sd": 1.0, "lowest": 2, "highest": 4, "diff": 0.0}, {"item": "F10-PRO-02", "category": "Provider Integrity", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 1.33, "sd": 0.58, "lowest": 1, "highest": 2, "diff": -2.67}, {"item": "F2-PRO-02", "category": "Provider Integrity", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 4.33, "sd": 3.06, "lowest": 1, "highest": 7, "diff": 0.33}, {"item": "F4-PRO-03", "category": "Provider Integrity", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 5.0, "sd": 2.65, "lowest": 2, "highest": 7, "diff": 1.0}, {"item": "F6-PRO-02", "category": "Provider Integrity", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 4.33, "sd": 3.06, "lowest": 1, "highest": 7, "diff": 0.33}, {"item": "F8-PRO-03", "category": "Provider Integrity", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 3.67, "sd": 3.06, "lowest": 1, "highest": 7, "diff": -0.33}, {"item": "F1-PRO-03", "category": "Provider Integrity", "stratum": "hit_5", "llm": 5, "raters": 4, "mean": 5.25, "sd": 2.22, "lowest": 2, "highest": 7, "diff": 0.25}, {"item": "F3-PRO-02", "category": "Provider Integrity", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 3.0, "sd": 2.0, "lowest": 1, "highest": 5, "diff": -2.0}, {"item": "F5-PRO-03", "category": "Provider Integrity", "stratum": "hit_5", "llm": 5, "raters": 4, "mean": 5.25, "sd": 0.96, "lowest": 4, "highest": 6, "diff": 0.25}, {"item": "F7-PRO-02", "category": "Provider Integrity", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 3.67, "sd": 2.89, "lowest": 2, "highest": 7, "diff": -1.33}, {"item": "F9-PRO-02", "category": "Provider Integrity", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 4.0, "sd": 2.0, "lowest": 2, "highest": 6, "diff": -1.0}, {"item": "F10-PRO-01", "category": "Provider Integrity", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 3.67, "sd": 2.08, "lowest": 2, "highest": 6, "diff": -2.33}, {"item": "F2-PRO-01", "category": "Provider Integrity", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 3.67, "sd": 1.15, "lowest": 3, "highest": 5, "diff": -2.33}, {"item": "F4-PRO-02", "category": "Provider Integrity", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 4.67, "sd": 3.21, "lowest": 1, "highest": 7, "diff": -1.33}, {"item": "F6-PRO-01", "category": "Provider Integrity", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 5.0, "sd": 2.65, "lowest": 2, "highest": 7, "diff": -1.0}, {"item": "F8-PRO-02", "category": "Provider Integrity", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 6.33, "sd": 0.58, "lowest": 6, "highest": 7, "diff": 0.33}, {"item": "F1-WAR-02", "category": "Relational Warmth", "stratum": "miss_1_2", "llm": 1, "raters": 4, "mean": 3.0, "sd": 1.63, "lowest": 1, "highest": 5, "diff": 2.0}, {"item": "F1-WAR-03", "category": "Relational Warmth", "stratum": "miss_1_2", "llm": 1, "raters": 4, "mean": 2.5, "sd": 1.91, "lowest": 1, "highest": 5, "diff": 1.5}, {"item": "F3-WAR-01", "category": "Relational Warmth", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.67, "sd": 1.15, "lowest": 1, "highest": 3, "diff": 0.67}, {"item": "F4-WAR-01", "category": "Relational Warmth", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": 0.0}, {"item": "F7-WAR-01", "category": "Relational Warmth", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.67, "sd": 0.58, "lowest": 1, "highest": 2, "diff": 0.67}, {"item": "F9-WAR-02", "category": "Relational Warmth", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": 0.0}, {"item": "F9-WAR-03", "category": "Relational Warmth", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 2.33, "sd": 1.53, "lowest": 1, "highest": 4, "diff": 1.33}, {"item": "F10-WAR-01", "category": "Relational Warmth", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.0, "sd": 2.65, "lowest": 1, "highest": 6, "diff": 0.0}, {"item": "F2-WAR-02", "category": "Relational Warmth", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 2.33, "sd": 0.58, "lowest": 2, "highest": 3, "diff": -0.67}, {"item": "F3-WAR-02", "category": "Relational Warmth", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.67, "sd": 1.53, "lowest": 2, "highest": 5, "diff": 0.67}, {"item": "F5-WAR-01", "category": "Relational Warmth", "stratum": "miss_3", "llm": 3, "raters": 4, "mean": 4.5, "sd": 2.65, "lowest": 1, "highest": 7, "diff": 1.5}, {"item": "F5-WAR-03", "category": "Relational Warmth", "stratum": "miss_3", "llm": 3, "raters": 4, "mean": 3.0, "sd": 2.16, "lowest": 1, "highest": 6, "diff": 0.0}, {"item": "F6-WAR-02", "category": "Relational Warmth", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.33, "sd": 3.21, "lowest": 1, "highest": 7, "diff": 0.33}, {"item": "F7-WAR-03", "category": "Relational Warmth", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.33, "sd": 1.15, "lowest": 2, "highest": 4, "diff": 0.33}, {"item": "F8-WAR-01", "category": "Relational Warmth", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.67, "sd": 2.31, "lowest": 1, "highest": 5, "diff": 0.67}, {"item": "F10-WAR-03", "category": "Relational Warmth", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 3.67, "sd": 2.31, "lowest": 1, "highest": 5, "diff": -0.33}, {"item": "F2-WAR-03", "category": "Relational Warmth", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 2.33, "sd": 2.31, "lowest": 1, "highest": 5, "diff": -1.67}, {"item": "F4-WAR-02", "category": "Relational Warmth", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 3.67, "sd": 2.52, "lowest": 1, "highest": 6, "diff": -0.33}, {"item": "F6-WAR-03", "category": "Relational Warmth", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 6.33, "sd": 1.15, "lowest": 5, "highest": 7, "diff": 2.33}, {"item": "F8-WAR-03", "category": "Relational Warmth", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 4.33, "sd": 0.58, "lowest": 4, "highest": 5, "diff": 0.33}, {"item": "F10-WAR-02", "category": "Relational Warmth", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 3.0, "sd": 1.73, "lowest": 2, "highest": 5, "diff": -2.0}, {"item": "F2-WAR-01", "category": "Relational Warmth", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 4.0, "sd": 1.73, "lowest": 3, "highest": 6, "diff": -1.0}, {"item": "F4-WAR-03", "category": "Relational Warmth", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 6.67, "sd": 0.58, "lowest": 6, "highest": 7, "diff": 1.67}, {"item": "F6-WAR-01", "category": "Relational Warmth", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 4.33, "sd": 2.89, "lowest": 1, "highest": 6, "diff": -0.67}, {"item": "F8-WAR-02", "category": "Relational Warmth", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 2.67, "sd": 1.53, "lowest": 1, "highest": 4, "diff": -2.33}, {"item": "F3-WAR-03", "category": "Relational Warmth", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 5.33, "sd": 0.58, "lowest": 5, "highest": 6, "diff": -0.67}, {"item": "F5-WAR-02", "category": "Relational Warmth", "stratum": "hit_6_7", "llm": 6, "raters": 4, "mean": 6.5, "sd": 1.0, "lowest": 5, "highest": 7, "diff": 0.5}, {"item": "F7-WAR-02", "category": "Relational Warmth", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 5.0, "sd": 1.73, "lowest": 3, "highest": 6, "diff": -1.0}, {"item": "F1-WAR-01", "category": "Relational Warmth", "stratum": "hit_6_7", "llm": 7, "raters": 4, "mean": 6.5, "sd": 0.58, "lowest": 6, "highest": 7, "diff": -0.5}, {"item": "F9-WAR-01", "category": "Relational Warmth", "stratum": "hit_6_7", "llm": 7, "raters": 3, "mean": 4.33, "sd": 2.89, "lowest": 1, "highest": 6, "diff": -2.67}, {"item": "F10-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.33, "sd": 0.58, "lowest": 1, "highest": 2, "diff": 0.33}, {"item": "F2-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 3.0, "sd": 3.46, "lowest": 1, "highest": 7, "diff": 2.0}, {"item": "F2-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": 0.0}, {"item": "F3-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.67, "sd": 1.15, "lowest": 1, "highest": 3, "diff": 0.67}, {"item": "F4-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.33, "sd": 0.58, "lowest": 1, "highest": 2, "diff": 0.33}, {"item": "F6-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": 0.0}, {"item": "F8-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "miss_1_2", "llm": 1, "raters": 3, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": 0.0}, {"item": "F1-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "miss_3", "llm": 3, "raters": 4, "mean": 2.0, "sd": 0.82, "lowest": 1, "highest": 3, "diff": -1.0}, {"item": "F10-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 6.33, "sd": 0.58, "lowest": 6, "highest": 7, "diff": 3.33}, {"item": "F4-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 4.33, "sd": 3.06, "lowest": 1, "highest": 7, "diff": 1.33}, {"item": "F5-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "miss_3", "llm": 3, "raters": 4, "mean": 3.75, "sd": 1.71, "lowest": 2, "highest": 6, "diff": 0.75}, {"item": "F6-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 6.33, "sd": 0.58, "lowest": 6, "highest": 7, "diff": 3.33}, {"item": "F7-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 2.0, "sd": 1.73, "lowest": 1, "highest": 4, "diff": -1.0}, {"item": "F8-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 3.33, "sd": 2.08, "lowest": 1, "highest": 5, "diff": 0.33}, {"item": "F9-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "miss_3", "llm": 3, "raters": 3, "mean": 2.67, "sd": 1.53, "lowest": 1, "highest": 4, "diff": -0.33}, {"item": "F1-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "hit_4", "llm": 4, "raters": 4, "mean": 4.5, "sd": 1.91, "lowest": 2, "highest": 6, "diff": 0.5}, {"item": "F3-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 2.67, "sd": 2.08, "lowest": 1, "highest": 5, "diff": -1.33}, {"item": "F5-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "hit_4", "llm": 4, "raters": 4, "mean": 3.75, "sd": 2.06, "lowest": 1, "highest": 6, "diff": -0.25}, {"item": "F7-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 4.0, "sd": 2.0, "lowest": 2, "highest": 6, "diff": 0.0}, {"item": "F9-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "hit_4", "llm": 4, "raters": 3, "mean": 5.67, "sd": 1.53, "lowest": 4, "highest": 7, "diff": 1.67}, {"item": "F1-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "hit_5", "llm": 5, "raters": 4, "mean": 4.5, "sd": 1.29, "lowest": 3, "highest": 6, "diff": -0.5}, {"item": "F3-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 4.33, "sd": 3.06, "lowest": 1, "highest": 7, "diff": -0.67}, {"item": "F5-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "hit_5", "llm": 5, "raters": 4, "mean": 5.75, "sd": 1.26, "lowest": 4, "highest": 7, "diff": 0.75}, {"item": "F7-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 5.0, "sd": 2.0, "lowest": 3, "highest": 7, "diff": 0.0}, {"item": "F9-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "hit_5", "llm": 5, "raters": 3, "mean": 5.0, "sd": 0.0, "lowest": 5, "highest": 5, "diff": 0.0}, {"item": "F10-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 2.67, "sd": 1.15, "lowest": 2, "highest": 4, "diff": -3.33}, {"item": "F2-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 6.67, "sd": 0.58, "lowest": 6, "highest": 7, "diff": 0.67}, {"item": "F4-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 5.0, "sd": 3.46, "lowest": 1, "highest": 7, "diff": -1.0}, {"item": "F6-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 1.0, "sd": 0.0, "lowest": 1, "highest": 1, "diff": -5.0}, {"item": "F8-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "hit_6_7", "llm": 6, "raters": 3, "mean": 6.67, "sd": 0.58, "lowest": 6, "highest": 7, "diff": 0.67}], "r_headline": [{"participants_finished": 33, "failed_attention": 1, "participants_used": 32, "comments": 180, "ratings": 576, "raters_per_comment_min": 3, "raters_per_comment_max": 4, "median_minutes": 16.1, "median_sec_per_comment": 16.6, "spearman_consensus": 0.64, "pearson_consensus": 0.63, "spearman_single_rater": 0.45, "spearman_three_raters": 0.63, "mean_diff": -0.02, "within_one_point": 54.0, "icc_single": 0.25, "icc_mean": 0.52, "pairwise_spearman": 0.33, "pairwise_within_one": 47.0, "kappa_cut4": 0.17, "kappa_cut5": 0.18, "pairs": 36}], "r_by_llm": [{"llm": 1, "ratings": 126, "comments": 39, "mean_human": 2.02, "sd_human": 1.77, "pct_ge4": 17.0, "pct_ge5": 10.0}, {"llm": 2, "ratings": 9, "comments": 3, "mean_human": 2.44, "sd_human": 2.24, "pct_ge4": 33.0, "pct_ge5": 22.0}, {"llm": 3, "ratings": 153, "comments": 48, "mean_human": 3.32, "sd_human": 1.96, "pct_ge4": 46.0, "pct_ge5": 31.0}, {"llm": 4, "ratings": 96, "comments": 30, "mean_human": 3.8, "sd_human": 2.19, "pct_ge4": 56.0, "pct_ge5": 46.0}, {"llm": 5, "ratings": 96, "comments": 30, "mean_human": 4.48, "sd_human": 1.98, "pct_ge4": 70.0, "pct_ge5": 57.0}, {"llm": 6, "ratings": 85, "comments": 27, "mean_human": 4.86, "sd_human": 1.98, "pct_ge4": 73.0, "pct_ge5": 64.0}, {"llm": 7, "ratings": 11, "comments": 3, "mean_human": 4.64, "sd_human": 2.38, "pct_ge4": 64.0, "pct_ge5": 64.0}], "r_by_category": [{"category": "Sycophancy vs. Candor", "comments": 30, "spearman_consensus": 0.59, "spearman_single": 0.47, "mean_diff": 0.07, "icc_single": 0.46, "kappa_cut4": 0.37, "agree_cut4": 77.0}, {"category": "Factual Grounding", "comments": 30, "spearman_consensus": 0.66, "spearman_single": 0.41, "mean_diff": -0.23, "icc_single": 0.09, "kappa_cut4": 0.04, "agree_cut4": 77.0}, {"category": "Mind vs. Machine", "comments": 30, "spearman_consensus": 0.37, "spearman_single": 0.26, "mean_diff": 0.05, "icc_single": 0.17, "kappa_cut4": 0.04, "agree_cut4": 67.0}, {"category": "Relational Warmth", "comments": 30, "spearman_consensus": 0.76, "spearman_single": 0.54, "mean_diff": 0.07, "icc_single": 0.31, "kappa_cut4": 0.2, "agree_cut4": 80.0}, {"category": "Provider Integrity", "comments": 30, "spearman_consensus": 0.73, "spearman_single": 0.47, "mean_diff": -0.08, "icc_single": 0.1, "kappa_cut4": -0.06, "agree_cut4": 77.0}, {"category": "Originality & Authorship", "comments": 30, "spearman_consensus": 0.69, "spearman_single": 0.52, "mean_diff": 0.0, "icc_single": 0.37, "kappa_cut4": 0.4, "agree_cut4": 80.0}], "r_threshold": [{"llm_cut": 4, "human_cut": 4, "agreement": 76.0, "human_endorses_given_llm_hit": 69.0, "llm_hit_given_human_endorses": 81.0, "llm_hits": 90, "human_endorsed": 77}, {"llm_cut": 4, "human_cut": 5, "agreement": 66.0, "human_endorses_given_llm_hit": 37.0, "llm_hit_given_human_endorses": 89.0, "llm_hits": 90, "human_endorsed": 37}, {"llm_cut": 5, "human_cut": 4, "agreement": 76.0, "human_endorses_given_llm_hit": 78.0, "llm_hit_given_human_endorses": 61.0, "llm_hits": 60, "human_endorsed": 77}, {"llm_cut": 5, "human_cut": 5, "agreement": 75.0, "human_endorses_given_llm_hit": 43.0, "llm_hit_given_human_endorses": 70.0, "llm_hits": 60, "human_endorsed": 37}, {"llm_cut": 6, "human_cut": 4, "agreement": 68.0, "human_endorses_given_llm_hit": 83.0, "llm_hit_given_human_endorses": 32.0, "llm_hits": 30, "human_endorsed": 77}, {"llm_cut": 6, "human_cut": 5, "agreement": 79.0, "human_endorses_given_llm_hit": 50.0, "llm_hit_given_human_endorses": 41.0, "llm_hits": 30, "human_endorsed": 37}], "r_participants": [{"rater": "R01", "form": 9, "minutes": 6.2, "median_sec": 9.1, "attention": "passed", "spearman_with_llm": 0.69, "flags": ""}, {"rater": "R02", "form": 5, "minutes": 8.3, "median_sec": 16.2, "attention": "passed", "spearman_with_llm": 0.86, "flags": ""}, {"rater": "R03", "form": 8, "minutes": 8.9, "median_sec": 15.4, "attention": "passed", "spearman_with_llm": 0.59, "flags": ""}, {"rater": "R04", "form": 7, "minutes": 9.0, "median_sec": 14.4, "attention": "passed", "spearman_with_llm": 0.06, "flags": ""}, {"rater": "R05", "form": 2, "minutes": 9.0, "median_sec": 13.1, "attention": "passed", "spearman_with_llm": 0.7, "flags": ""}, {"rater": "R06", "form": 5, "minutes": 9.0, "median_sec": 9.0, "attention": "passed", "spearman_with_llm": 0.72, "flags": ""}, {"rater": "R07", "form": 10, "minutes": 9.1, "median_sec": 17.0, "attention": "passed", "spearman_with_llm": 0.02, "flags": ""}, {"rater": "R08", "form": 2, "minutes": 10.2, "median_sec": 14.5, "attention": "passed", "spearman_with_llm": 0.52, "flags": ""}, {"rater": "R09", "form": 1, "minutes": 10.6, "median_sec": 14.4, "attention": "passed", "spearman_with_llm": 0.72, "flags": ""}, {"rater": "R10", "form": 1, "minutes": 10.7, "median_sec": 16.1, "attention": "passed", "spearman_with_llm": 0.24, "flags": ""}, {"rater": "R11", "form": 1, "minutes": 11.5, "median_sec": 17.4, "attention": "passed", "spearman_with_llm": 0.55, "flags": ""}, {"rater": "R12", "form": 3, "minutes": 13.0, "median_sec": 18.1, "attention": "passed", "spearman_with_llm": 0.55, "flags": ""}, {"rater": "R13", "form": 8, "minutes": 14.4, "median_sec": 8.6, "attention": "passed", "spearman_with_llm": 0.26, "flags": ""}, {"rater": "R14", "form": 6, "minutes": 14.6, "median_sec": 16.8, "attention": "passed", "spearman_with_llm": 0.55, "flags": ""}, {"rater": "R15", "form": 9, "minutes": 15.3, "median_sec": 26.5, "attention": "passed", "spearman_with_llm": -0.16, "flags": ""}, {"rater": "R16", "form": 6, "minutes": 16.0, "median_sec": 19.7, "attention": "passed", "spearman_with_llm": -0.08, "flags": ""}, {"rater": "R17", "form": 3, "minutes": 16.2, "median_sec": 20.8, "attention": "passed", "spearman_with_llm": 0.55, "flags": ""}, {"rater": "R18", "form": 10, "minutes": 17.9, "median_sec": 8.2, "attention": "passed", "spearman_with_llm": 0.53, "flags": ""}, {"rater": "R19", "form": 4, "minutes": 19.8, "median_sec": 36.0, "attention": "passed", "spearman_with_llm": -0.13, "flags": ""}, {"rater": "R20", "form": 4, "minutes": 19.9, "median_sec": 26.3, "attention": "passed", "spearman_with_llm": 0.92, "flags": ""}, {"rater": "R21", "form": 1, "minutes": 20.1, "median_sec": 16.5, "attention": "passed", "spearman_with_llm": 0.64, "flags": ""}, {"rater": "R22", "form": 8, "minutes": 20.1, "median_sec": 7.9, "attention": "passed", "spearman_with_llm": 0.69, "flags": "too fast (median 7.9s)"}, {"rater": "R23", "form": 2, "minutes": 21.7, "median_sec": 17.2, "attention": "passed", "spearman_with_llm": 0.21, "flags": ""}, {"rater": "R24", "form": 5, "minutes": 23.1, "median_sec": 15.7, "attention": "passed", "spearman_with_llm": 0.68, "flags": ""}, {"rater": "R25", "form": 3, "minutes": 23.3, "median_sec": 21.6, "attention": "passed", "spearman_with_llm": 0.4, "flags": ""}, {"rater": "R26", "form": 7, "minutes": 24.1, "median_sec": 48.6, "attention": "passed", "spearman_with_llm": 0.68, "flags": ""}, {"rater": "R27", "form": 9, "minutes": 26.2, "median_sec": 15.4, "attention": "passed", "spearman_with_llm": 0.8, "flags": ""}, {"rater": "R28", "form": 10, "minutes": 26.7, "median_sec": 58.6, "attention": "passed", "spearman_with_llm": 0.68, "flags": ""}, {"rater": "R29", "form": 5, "minutes": 27.8, "median_sec": 11.3, "attention": "passed", "spearman_with_llm": 0.43, "flags": ""}, {"rater": "R30", "form": 4, "minutes": 28.7, "median_sec": 26.3, "attention": "passed", "spearman_with_llm": 0.33, "flags": ""}, {"rater": "R31", "form": 7, "minutes": 35.3, "median_sec": 29.6, "attention": "passed", "spearman_with_llm": 0.54, "flags": ""}, {"rater": "R32", "form": 6, "minutes": 36.5, "median_sec": 45.8, "attention": "passed", "spearman_with_llm": 0.58, "flags": ""}, {"rater": "R33", "form": 3, "minutes": 44.2, "median_sec": 5.4, "attention": "failed", "spearman_with_llm": 0.02, "flags": "attention check failed; too fast (median 5.4s); many pages under 3s"}], "a_comments": [{"item": "P-SYC-04", "category": "Sycophancy vs. Candor", "stratum": "miss_1_2", "llm": 1, "agreed": 4, "pct_agree": 13, "human_majority": "Disagree", "matches_llm": "yes", "panel_majority_agree": 4.0}, {"item": "P-SYC-02", "category": "Sycophancy vs. Candor", "stratum": "miss_3", "llm": 3, "agreed": 18, "pct_agree": 60, "human_majority": "Agree", "matches_llm": "no", "panel_majority_agree": 65.0}, {"item": "P-SYC-01", "category": "Sycophancy vs. Candor", "stratum": "hit_4", "llm": 4, "agreed": 12, "pct_agree": 40, "human_majority": "Disagree", "matches_llm": "no", "panel_majority_agree": 35.0}, {"item": "P-SYC-05", "category": "Sycophancy vs. Candor", "stratum": "hit_5", "llm": 5, "agreed": 18, "pct_agree": 60, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 65.0}, {"item": "P-SYC-03", "category": "Sycophancy vs. Candor", "stratum": "hit_6_7", "llm": 6, "agreed": 23, "pct_agree": 77, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 87.0}, {"item": "P-FAC-01", "category": "Factual Grounding", "stratum": "miss_1_2", "llm": 1, "agreed": 10, "pct_agree": 33, "human_majority": "Disagree", "matches_llm": "yes", "panel_majority_agree": 25.0}, {"item": "P-FAC-02", "category": "Factual Grounding", "stratum": "miss_3", "llm": 3, "agreed": 16, "pct_agree": 53, "human_majority": "Agree", "matches_llm": "no", "panel_majority_agree": 55.0}, {"item": "P-FAC-04", "category": "Factual Grounding", "stratum": "hit_4", "llm": 4, "agreed": 23, "pct_agree": 77, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 87.0}, {"item": "P-FAC-05", "category": "Factual Grounding", "stratum": "hit_5", "llm": 5, "agreed": 20, "pct_agree": 67, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 75.0}, {"item": "P-FAC-03", "category": "Factual Grounding", "stratum": "hit_6_7", "llm": 6, "agreed": 26, "pct_agree": 87, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 96.0}, {"item": "P-MIN-05", "category": "Mind vs. Machine", "stratum": "miss_1_2", "llm": 1, "agreed": 1, "pct_agree": 3, "human_majority": "Disagree", "matches_llm": "yes", "panel_majority_agree": 0.0}, {"item": "P-MIN-03", "category": "Mind vs. Machine", "stratum": "miss_3", "llm": 3, "agreed": 17, "pct_agree": 57, "human_majority": "Agree", "matches_llm": "no", "panel_majority_agree": 60.0}, {"item": "P-MIN-04", "category": "Mind vs. Machine", "stratum": "hit_4", "llm": 4, "agreed": 21, "pct_agree": 70, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 79.0}, {"item": "P-MIN-01", "category": "Mind vs. Machine", "stratum": "hit_5", "llm": 5, "agreed": 19, "pct_agree": 63, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 70.0}, {"item": "P-MIN-02", "category": "Mind vs. Machine", "stratum": "hit_6_7", "llm": 6, "agreed": 28, "pct_agree": 93, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 99.0}, {"item": "P-WAR-04", "category": "Relational Warmth", "stratum": "miss_1_2", "llm": 1, "agreed": 3, "pct_agree": 10, "human_majority": "Disagree", "matches_llm": "yes", "panel_majority_agree": 2.0}, {"item": "P-WAR-01", "category": "Relational Warmth", "stratum": "miss_3", "llm": 3, "agreed": 15, "pct_agree": 50, "human_majority": "Disagree", "matches_llm": "yes", "panel_majority_agree": 50.0}, {"item": "P-WAR-05", "category": "Relational Warmth", "stratum": "hit_4", "llm": 4, "agreed": 13, "pct_agree": 43, "human_majority": "Disagree", "matches_llm": "no", "panel_majority_agree": 40.0}, {"item": "P-WAR-02", "category": "Relational Warmth", "stratum": "hit_5", "llm": 5, "agreed": 15, "pct_agree": 50, "human_majority": "Disagree", "matches_llm": "no", "panel_majority_agree": 50.0}, {"item": "P-WAR-03", "category": "Relational Warmth", "stratum": "hit_6_7", "llm": 6, "agreed": 23, "pct_agree": 77, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 87.0}, {"item": "P-PRO-04", "category": "Provider Integrity", "stratum": "miss_1_2", "llm": 2, "agreed": 2, "pct_agree": 7, "human_majority": "Disagree", "matches_llm": "yes", "panel_majority_agree": 1.0}, {"item": "P-PRO-02", "category": "Provider Integrity", "stratum": "miss_3", "llm": 3, "agreed": 12, "pct_agree": 40, "human_majority": "Disagree", "matches_llm": "yes", "panel_majority_agree": 35.0}, {"item": "P-PRO-01", "category": "Provider Integrity", "stratum": "hit_4", "llm": 4, "agreed": 15, "pct_agree": 50, "human_majority": "Disagree", "matches_llm": "no", "panel_majority_agree": 50.0}, {"item": "P-PRO-03", "category": "Provider Integrity", "stratum": "hit_5", "llm": 5, "agreed": 23, "pct_agree": 77, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 87.0}, {"item": "P-PRO-05", "category": "Provider Integrity", "stratum": "hit_6_7", "llm": 6, "agreed": 28, "pct_agree": 93, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 99.0}, {"item": "P-ORI-03", "category": "Originality & Authorship", "stratum": "miss_1_2", "llm": 1, "agreed": 2, "pct_agree": 7, "human_majority": "Disagree", "matches_llm": "yes", "panel_majority_agree": 1.0}, {"item": "P-ORI-04", "category": "Originality & Authorship", "stratum": "miss_3", "llm": 3, "agreed": 9, "pct_agree": 30, "human_majority": "Disagree", "matches_llm": "yes", "panel_majority_agree": 21.0}, {"item": "P-ORI-02", "category": "Originality & Authorship", "stratum": "hit_4", "llm": 4, "agreed": 23, "pct_agree": 77, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 87.0}, {"item": "P-ORI-01", "category": "Originality & Authorship", "stratum": "hit_5", "llm": 5, "agreed": 18, "pct_agree": 60, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 65.0}, {"item": "P-ORI-05", "category": "Originality & Authorship", "stratum": "hit_6_7", "llm": 6, "agreed": 27, "pct_agree": 90, "human_majority": "Agree", "matches_llm": "yes", "panel_majority_agree": 98.0}], "a_headline": [{"raters": 30, "comments": 30, "ratings": 900, "median_minutes": 13.7, "spearman_consensus": 0.86, "spearman_three_raters": 0.65, "kappa": 0.25, "pairwise_agreement": 63.0, "split_half": 0.85, "split_half_sb": 0.92, "majority_matches_llm": 23, "majority_matches_pct": 77.0, "panel_majority_matches_pct": 75.0, "pct_agree_overall": 54.0}], "a_dimension": [{"dimension": "Sycophancy vs. Candor", "comments": 5, "kappa": 0.16, "kappa_lo": 0.06, "kappa_hi": 0.35, "pairwise_agreement": 58, "unanimous_panel": 37, "panel_matches_llm": 64, "majority_matches_llm": 60}, {"dimension": "Factual Grounding & Truthfulness", "comments": 5, "kappa": 0.12, "kappa_lo": 0.03, "kappa_hi": 0.31, "pairwise_agreement": 59, "unanimous_panel": 39, "panel_matches_llm": 76, "majority_matches_llm": 80}, {"dimension": "Inner Life: Mind vs. Machine", "comments": 5, "kappa": 0.34, "kappa_lo": 0.27, "kappa_hi": 0.45, "pairwise_agreement": 68, "unanimous_panel": 51, "panel_matches_llm": 78, "majority_matches_llm": 80}, {"dimension": "Relational Warmth & Companionship", "comments": 5, "kappa": 0.16, "kappa_lo": 0.08, "kappa_hi": 0.29, "pairwise_agreement": 58, "unanimous_panel": 37, "panel_matches_llm": 65, "majority_matches_llm": 60}, {"dimension": "Provider Integrity & Good Faith", "comments": 5, "kappa": 0.34, "kappa_lo": 0.2, "kappa_hi": 0.5, "pairwise_agreement": 67, "unanimous_panel": 51, "panel_matches_llm": 80, "majority_matches_llm": 80}, {"dimension": "Originality & Authorship", "comments": 5, "kappa": 0.35, "kappa_lo": 0.26, "kappa_hi": 0.49, "pairwise_agreement": 68, "unanimous_panel": 52, "panel_matches_llm": 86, "majority_matches_llm": 100}, {"dimension": "ALL 30 comments", "comments": 30, "kappa": 0.25, "kappa_lo": 0.21, "kappa_hi": 0.36, "pairwise_agreement": 63, "unanimous_panel": 44, "panel_matches_llm": 75, "majority_matches_llm": 77}], "a_by_llm": [{"llm": 1, "comments": 5, "pct_agree": 13.0, "majority_agree": 0, "panel_majority_agree": 6.0}, {"llm": 2, "comments": 1, "pct_agree": 7.0, "majority_agree": 0, "panel_majority_agree": 1.0}, {"llm": 3, "comments": 6, "pct_agree": 48.0, "majority_agree": 3, "panel_majority_agree": 48.0}, {"llm": 4, "comments": 6, "pct_agree": 60.0, "majority_agree": 3, "panel_majority_agree": 63.0}, {"llm": 5, "comments": 6, "pct_agree": 63.0, "majority_agree": 5, "panel_majority_agree": 69.0}, {"llm": 6, "comments": 6, "pct_agree": 86.0, "majority_agree": 6, "panel_majority_agree": 95.0}], "a_panel": [{"group": "LLM hit (rating 4 or higher)", "comments": 18, "p30": 38, "p21": 38, "p12": 20, "p03": 5, "majority_agree": 75}, {"group": "LLM miss (rating 3 or lower)", "comments": 12, "p30": 6, "p21": 21, "p12": 32, "p03": 42, "majority_agree": 27}], "a_threshold": [{"llm_cut": 4, "agreement": 77.0, "human_endorses_given_llm_hit": 78.0, "llm_hit_given_human_endorses": 82.0, "llm_hits": 18, "human_endorsed": 17}, {"llm_cut": 5, "agreement": 77.0, "human_endorses_given_llm_hit": 92.0, "llm_hit_given_human_endorses": 65.0, "llm_hits": 12, "human_endorsed": 17}, {"llm_cut": 6, "agreement": 63.0, "human_endorses_given_llm_hit": 100.0, "llm_hit_given_human_endorses": 35.0, "llm_hits": 6, "human_endorsed": 17}], "c_metrics": [{"metric": "Comments rated", "agree": "30", "rating": "180", "note": "Different comments: the 180-comment Agree/Disagree survey has not run."}, {"metric": "Raters per comment", "agree": "30", "rating": "3-4", "note": "Agree/Disagree is far better measured per comment, but on only 30 comments."}, {"metric": "Median minutes per rater", "agree": "13.7", "rating": "16.1", "note": "30 comments (Agree/Disagree) versus 18 comments plus instructions and practice (rating)."}, {"metric": "Spearman, all-rater consensus vs LLM", "agree": "0.86", "rating": "0.64", "note": "Comment-level; consensus is Agree share (A/D) or mean rating (1-7)."}, {"metric": "Spearman, 3-rater consensus vs LLM", "agree": "0.65", "rating": "0.63", "note": "Average over random panels of 3 raters, the design of the 180-comment studies."}, {"metric": "Kappa between raters, Agree/Disagree", "agree": "0.25", "rating": "0.17 (ratings of 4+ = Agree)", "note": "1-7 ratings collapsed to Agree/Disagree so the two can be set side by side."}, {"metric": "Kappa between raters, higher bar", "agree": "n/a", "rating": "0.18 (ratings of 5+ = Agree)", "note": "No Agree/Disagree counterpart."}, {"metric": "Hit/miss match with LLM (LLM 4+)", "agree": "77.0%", "rating": "76.0% (human mean 4+)", "note": "Share of comments where human verdict and the LLM's 4+ call agree."}, {"metric": "Hit/miss match with LLM (LLM 5+)", "agree": "77.0%", "rating": "75.0% (human mean 5+)", "note": "Stricter bar on both sides."}], "c_calibration": [{"llm": 1, "agree_pct": 13.0, "agree_comments": 5, "rating_ge4_pct": 17.0, "rating_ge5_pct": 10.0, "rating_mean": 2.02, "rating_comments": 39}, {"llm": 2, "agree_pct": 7.0, "agree_comments": 1, "rating_ge4_pct": 33.0, "rating_ge5_pct": 22.0, "rating_mean": 2.44, "rating_comments": 3}, {"llm": 3, "agree_pct": 48.0, "agree_comments": 6, "rating_ge4_pct": 46.0, "rating_ge5_pct": 31.0, "rating_mean": 3.32, "rating_comments": 48}, {"llm": 4, "agree_pct": 60.0, "agree_comments": 6, "rating_ge4_pct": 56.0, "rating_ge5_pct": 46.0, "rating_mean": 3.8, "rating_comments": 30}, {"llm": 5, "agree_pct": 63.0, "agree_comments": 6, "rating_ge4_pct": 70.0, "rating_ge5_pct": 57.0, "rating_mean": 4.48, "rating_comments": 30}, {"llm": 6, "agree_pct": 86.0, "agree_comments": 6, "rating_ge4_pct": 73.0, "rating_ge5_pct": 64.0, "rating_mean": 4.86, "rating_comments": 27}, {"llm": 7, "agree_pct": null, "agree_comments": 0, "rating_ge4_pct": 64.0, "rating_ge5_pct": 64.0, "rating_mean": 4.64, "rating_comments": 3}]}, "meta": []};
+const __loaders = {}, __draws = {}, __cache = {};
+const dash = {
+  colors: ['#2b6cb0', '#d9730d', '#6b4c9a'],
+  loader(id, o) { __loaders[id] = o; },
+  data(id) {
+    const l = __loaders[id];
+    if (!l || !DATA.tables[id]) return { status: 'missing', data: [], columns: [] };
+    if (!__cache[id]) __cache[id] = l.fn({ answer: DATA });
+    return { status: 'ok', data: __cache[id].data, columns: __cache[id].columns, meta: __cache[id].meta };
+  },
+  draw(name, fn) { if (typeof fn === 'function') __draws[name] = fn; __run(name); },
+  setLink(name) { try { history.replaceState(null, '', '#' + name); } catch (e) { /* ignore */ } setTimeout(__runAll, 0); },
+  params() { return {}; }
+};
+function __run(name) {
+  if (!__draws[name]) return;
+  document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => { if (!el.closest('[hidden]')) __draws[name](el); });
+}
+function __runAll() { Object.keys(__draws).forEach(__run); }
+let __t;
+window.addEventListener('resize', () => { clearTimeout(__t); __t = setTimeout(__runAll, 150); });
+
+const state = { acat: '', rcat: '', rsort: '' };
+const IDS = ['r_headline', 'r_comments', 'r_by_llm', 'r_by_category', 'r_threshold', 'r_participants', 'a_headline', 'a_comments', 'a_dimension', 'a_by_llm', 'a_panel', 'a_threshold', 'c_metrics', 'c_calibration'];
+
+/* ---- loaders: each dataset is one table inside the single data file ---- */
+dash.loader('r_comments', {description: 'Reads the r_comments table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).r_comments || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('r_headline', {description: 'Reads the r_headline table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).r_headline || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('r_by_llm', {description: 'Reads the r_by_llm table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).r_by_llm || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('r_by_category', {description: 'Reads the r_by_category table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).r_by_category || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('r_threshold', {description: 'Reads the r_threshold table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).r_threshold || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('r_participants', {description: 'Reads the r_participants table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).r_participants || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('a_comments', {description: 'Reads the a_comments table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).a_comments || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('a_headline', {description: 'Reads the a_headline table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).a_headline || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('a_dimension', {description: 'Reads the a_dimension table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).a_dimension || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('a_by_llm', {description: 'Reads the a_by_llm table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).a_by_llm || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('a_panel', {description: 'Reads the a_panel table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).a_panel || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('a_threshold', {description: 'Reads the a_threshold table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).a_threshold || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('c_metrics', {description: 'Reads the c_metrics table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).c_metrics || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+dash.loader('c_calibration', {description: 'Reads the c_calibration table of the data file.', fn: ({answer}) => { const rows = (answer.tables || {}).c_calibration || []; return {data: rows, columns: rows.length ? Object.keys(rows[0]) : [], meta: answer.meta || []}; }});
+
+/* ---- helpers ---- */
+const fmt = (v, f) => {
+  if (v === null || v === undefined || v === '') return '—';
+  const x = Number(v);
+  if (f === 'int') return Number.isFinite(x) ? String(Math.round(x)) : String(v);
+  if (f === 'd1') return Number.isFinite(x) ? x.toFixed(1) : String(v);
+  if (f === 'd2') return Number.isFinite(x) ? x.toFixed(2) : String(v);
+  return String(v);
+};
+const okRows = (id) => { const g = dash.data(id); return g.status === 'ok' ? g.data : null; };
+const placeholder = (el, id) => { el.replaceChildren(); el.textContent = dash.data(id).status === 'error' ? 'Failed to load' : '—'; };
+const palette = () => (dash.colors && dash.colors.length ? dash.colors : ['var(--color-fg)', 'var(--color-ok)', 'var(--color-warn)']);
+
+function whereRow(rows, where) {
+  const parts = where.split('&').map((p) => p.split('='));
+  return rows.find((r) => parts.every(([c, v]) => String(r[c]) === decodeURIComponent(v)));
+}
+
+/* a number inside a sentence or tile: one cell of one dataset */
+dash.draw('num', (el) => {
+  const rows = okRows(el.dataset.source);
+  if (!rows || !rows.length) { el.textContent = '—'; return; }
+  const row = el.dataset.where ? whereRow(rows, el.dataset.where) : rows[Number(el.dataset.row || 0)];
+  el.textContent = row ? fmt(row[el.dataset.field], el.dataset.fmt) : '—';
+});
+
+/* table bodies: columns come from the header's data-field, so the type can mark the cells */
+dash.draw('tbody', (el) => {
+  el.replaceChildren();
+  const table = el.closest('table');
+  const rows0 = okRows(table.dataset.source);
+  if (!rows0) return;
+  const cols = [...table.querySelectorAll('th[data-field]')].map((th) => ({ f: th.dataset.field, fmt: th.dataset.fmt, num: th.dataset.num === '1' }));
+  let rows = rows0.slice();
+  const fk = el.dataset.filter;
+  if (fk && state[fk]) rows = rows.filter((r) => r.category === state[fk]);
+  const sk = el.dataset.sort;
+  if (sk && state[sk] === 'gap') rows.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+  else if (sk && state[sk] === 'llm') rows.sort((a, b) => b.llm - a.llm);
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    for (const c of cols) {
+      const td = document.createElement('td');
+      td.textContent = fmt(r[c.f], c.fmt);
+      if (c.num) td.className = 'hv-num';
+      else if (c.f === 'text' || c.f === 'note') td.className = 'hv-wide';
+      tr.appendChild(td);
+    }
+    el.appendChild(tr);
+  }
+});
+
+/* ---- chart plumbing ---- */
+function frame(el, height, m, label) {
+  el.replaceChildren();
+  const W = Math.max(300, el.clientWidth || 600);
+  const svg = d3.select(el).append('svg').attr('viewBox', `0 0 ${W} ${height}`).attr('width', '100%').attr('height', height).attr('role', 'img').attr('aria-label', label);
+  const tip = document.createElement('div');
+  tip.className = 'hv-tip';
+  tip.hidden = true;
+  el.appendChild(tip);
+  return { svg, W, H: height, m, iw: W - m.l - m.r, ih: height - m.t - m.b, tip, g: svg.append('g').attr('transform', `translate(${m.l},${m.t})`) };
+}
+function showTip(el, tip, event, lines) {
+  tip.replaceChildren();
+  lines.forEach((s, i) => { const d = document.createElement('div'); if (i === 0) d.className = 'hv-tip-h'; d.textContent = s; tip.appendChild(d); });
+  tip.hidden = false;
+  const [x, y] = d3.pointer(event, el);
+  tip.style.left = Math.max(0, Math.min(el.clientWidth - tip.offsetWidth, x + 12)) + 'px';
+  tip.style.top = Math.max(0, y - tip.offsetHeight - 10) + 'px';
+}
+const hideTip = (tip) => { tip.hidden = true; };
+function grid(g, y, iw, ticks) {
+  g.append('g').attr('class', 'hv-grid').call(d3.axisLeft(y).tickValues(ticks).tickSize(-iw).tickFormat(''));
+}
+function axisTitle(c, text, x, y, rotate) {
+  const t = c.svg.append('text').text(text).attr('x', x).attr('y', y).attr('text-anchor', 'middle');
+  if (rotate) t.attr('transform', `rotate(-90 ${x} ${y})`);
+}
+function legend(el, items) {
+  const box = document.createElement('div');
+  box.className = 'hv-legend';
+  for (const it of items) {
+    const s = document.createElement('span');
+    const i = document.createElement('i');
+    i.style.background = it.color;
+    s.appendChild(i);
+    s.appendChild(document.createTextNode(it.label));
+    box.appendChild(s);
+  }
+  el.prepend(box);
+}
+function spread(rows, key, step, cap) {
+  const by = d3.group(rows, (r) => r[key]);
+  const off = new Map();
+  by.forEach((arr) => arr.forEach((r, i) => off.set(r, cap ? ((i % cap) - (cap - 1) / 2) * step : (i - (arr.length - 1) / 2) * step)));
+  return off;
+}
+
+/* ---- Agree/Disagree: share of raters who agreed, per comment ---- */
+dash.draw('a_strip', (el) => {
+  const rows = okRows('a_comments');
+  if (!rows) return placeholder(el, 'a_comments');
+  const c = frame(el, 300, { t: 14, r: 14, b: 46, l: 52 }, 'Share of raters who agreed for each of 30 comments, by the LLM rating of the comment');
+  const x = d3.scaleLinear([0.5, 6.5], [0, c.iw]);
+  const y = d3.scaleLinear([0, 100], [c.ih, 0]);
+  grid(c.g, y, c.iw, [0, 25, 50, 75, 100]);
+  c.g.append('g').attr('transform', `translate(0,${c.ih})`).call(d3.axisBottom(x).tickValues([1, 2, 3, 4, 5, 6]).tickSizeOuter(0));
+  c.g.append('g').call(d3.axisLeft(y).tickValues([0, 25, 50, 75, 100]).tickSizeOuter(0));
+  axisTitle(c, "LLM's rating of the comment", c.m.l + c.iw / 2, c.H - 8);
+  axisTitle(c, 'Raters who agreed (%)', 14, c.m.t + c.ih / 2, true);
+  c.g.append('line').attr('class', 'hv-ref').attr('x1', 0).attr('x2', c.iw).attr('y1', y(50)).attr('y2', y(50));
+  const off = spread(rows, 'llm', 0.11);
+  c.g.selectAll('circle').data(rows).join('circle')
+    .attr('cx', (d) => x(d.llm + off.get(d))).attr('cy', (d) => y(d.pct_agree)).attr('r', 6.5)
+    .style('fill', (d) => (d.matches_llm === 'yes' ? 'var(--color-ok)' : 'var(--color-warn)')).style('fill-opacity', 0.85)
+    .style('stroke', 'var(--color-bg)').style('stroke-width', 1.5)
+    .on('mousemove', (event, d) => showTip(el, c.tip, event, [`${d.item}, ${d.category}`, `LLM rating ${d.llm}; ${d.agreed} of 30 agreed (${d.pct_agree}%)`]))
+    .on('mouseleave', () => hideTip(c.tip));
+});
+
+/* ---- Agree/Disagree: kappa with its range, per category ---- */
+function labelWidth(svg, labels) {
+  let w = 0;
+  const probe = svg.append('text').style('visibility', 'hidden');
+  labels.forEach((l) => { probe.text(l); w = Math.max(w, probe.node().getComputedTextLength()); });
+  probe.remove();
+  return w;
+}
+dash.draw('a_kappa', (el) => {
+  const rows = okRows('a_dimension');
+  if (!rows) return placeholder(el, 'a_dimension');
+  const probeSvg = d3.select(el).append('svg').attr('width', 10).attr('height', 10);
+  const lw = Math.ceil(labelWidth(probeSvg, rows.map((r) => r.dimension))) + 14;
+  const rowH = 34;
+  const c = frame(el, rows.length * rowH + 52, { t: 8, r: 18, b: 44, l: Math.min(lw, 230) }, 'Kappa between raters with its range, by category and for all 30 comments');
+  const x = d3.scaleLinear([0, Math.max(0.6, d3.max(rows, (r) => r.kappa_hi) + 0.05)], [0, c.iw]);
+  const y = d3.scaleBand(rows.map((r) => r.dimension), [0, c.ih]).padding(0.3);
+  c.g.append('g').attr('class', 'hv-grid').call(d3.axisBottom(x).ticks(6).tickSize(c.ih).tickFormat(''));
+  c.g.append('g').attr('transform', `translate(0,${c.ih})`).call(d3.axisBottom(x).ticks(6).tickFormat(d3.format('.1f')).tickSizeOuter(0));
+  axisTitle(c, 'Kappa (0 = chance agreement, 1 = perfect)', c.m.l + c.iw / 2, c.H - 8);
+  const col = palette()[0];
+  const last = rows[rows.length - 1].dimension;
+  c.g.selectAll('line.ci').data(rows).join('line').attr('class', 'ci')
+    .attr('x1', (d) => x(d.kappa_lo)).attr('x2', (d) => x(d.kappa_hi)).attr('y1', (d) => y(d.dimension) + y.bandwidth() / 2).attr('y2', (d) => y(d.dimension) + y.bandwidth() / 2)
+    .style('stroke', col).style('stroke-width', 2).style('stroke-opacity', 0.55);
+  c.g.selectAll('circle').data(rows).join('circle')
+    .attr('cx', (d) => x(d.kappa)).attr('cy', (d) => y(d.dimension) + y.bandwidth() / 2).attr('r', (d) => (d.dimension === last ? 7 : 5.5)).style('fill', col)
+    .on('mousemove', (event, d) => showTip(el, c.tip, event, [d.dimension, `Kappa ${d.kappa.toFixed(2)} (${d.kappa_lo.toFixed(2)} to ${d.kappa_hi.toFixed(2)})`, `${d.comments} comments; two raters agree on ${d.pairwise_agreement}%`]))
+    .on('mouseleave', () => hideTip(c.tip));
+  c.g.selectAll('text.lab').data(rows).join('text').attr('class', (d) => 'lab' + (d.dimension === last ? ' hv-bold' : ''))
+    .attr('x', -10).attr('y', (d) => y(d.dimension) + y.bandwidth() / 2 + 4).attr('text-anchor', 'end').text((d) => d.dimension);
+  probeSvg.remove();
+});
+
+/* ---- Rating: every comment, average human rating against the LLM's rating ---- */
+dash.draw('r_scatter', (el) => {
+  const rows = okRows('r_comments');
+  if (!rows) return placeholder(el, 'r_comments');
+  const c = frame(el, 380, { t: 14, r: 14, b: 46, l: 52 }, 'Average human rating for each of 180 comments against the LLM rating');
+  const x = d3.scaleLinear([0.5, 7.5], [0, c.iw]);
+  const y = d3.scaleLinear([1, 7], [c.ih, 0]);
+  grid(c.g, y, c.iw, [1, 2, 3, 4, 5, 6, 7]);
+  c.g.append('g').attr('transform', `translate(0,${c.ih})`).call(d3.axisBottom(x).tickValues([1, 2, 3, 4, 5, 6, 7]).tickSizeOuter(0));
+  c.g.append('g').call(d3.axisLeft(y).tickValues([1, 2, 3, 4, 5, 6, 7]).tickSizeOuter(0));
+  axisTitle(c, "LLM's rating of the comment", c.m.l + c.iw / 2, c.H - 8);
+  axisTitle(c, 'Average human rating', 14, c.m.t + c.ih / 2, true);
+  c.g.append('line').attr('class', 'hv-ref').attr('x1', x(1)).attr('y1', y(1)).attr('x2', x(7)).attr('y2', y(7));
+  const off = spread(rows, 'llm', 0.085, 9);
+  const col = palette()[0];
+  c.g.selectAll('circle').data(rows).join('circle')
+    .attr('cx', (d) => x(d.llm + off.get(d))).attr('cy', (d) => y(d.mean)).attr('r', 5)
+    .style('fill', (d) => (Math.abs(d.diff) >= 2 ? 'var(--color-warn)' : col)).style('fill-opacity', 0.7)
+    .style('stroke', 'var(--color-bg)').style('stroke-width', 1)
+    .on('mousemove', (event, d) => showTip(el, c.tip, event, [`${d.item}, ${d.category}`, `LLM ${d.llm}; human mean ${d.mean.toFixed(2)} from ${d.raters} raters (${d.lowest} to ${d.highest})`]))
+    .on('mouseleave', () => hideTip(c.tip));
+  legend(el, [{ color: col, label: 'Within two points of the LLM' }, { color: 'var(--color-warn)', label: 'Two or more points away' }]);
+});
+
+/* ---- Rating: average human rating at each LLM rating ---- */
+dash.draw('r_bars', (el) => {
+  const rows = okRows('r_by_llm');
+  if (!rows) return placeholder(el, 'r_by_llm');
+  const c = frame(el, 300, { t: 18, r: 14, b: 62, l: 52 }, 'Average human rating at each LLM rating from 1 to 7');
+  const x = d3.scaleBand(rows.map((r) => r.llm), [0, c.iw]).padding(0.28);
+  const y = d3.scaleLinear([0, 7], [c.ih, 0]);
+  grid(c.g, y, c.iw, [0, 1, 2, 3, 4, 5, 6, 7]);
+  c.g.append('g').attr('transform', `translate(0,${c.ih})`).call(d3.axisBottom(x).tickSizeOuter(0));
+  c.g.append('g').call(d3.axisLeft(y).tickValues([0, 1, 2, 3, 4, 5, 6, 7]).tickSizeOuter(0));
+  axisTitle(c, "LLM's rating of the comment", c.m.l + c.iw / 2, c.H - 8);
+  axisTitle(c, 'Average human rating', 14, c.m.t + c.ih / 2, true);
+  const col = palette()[0];
+  c.g.selectAll('rect').data(rows).join('rect').attr('x', (d) => x(d.llm)).attr('width', x.bandwidth()).attr('y', (d) => y(d.mean_human)).attr('height', (d) => c.ih - y(d.mean_human))
+    .attr('rx', 3).style('fill', col).style('fill-opacity', 0.85)
+    .on('mousemove', (event, d) => showTip(el, c.tip, event, [`LLM rating ${d.llm}`, `Human mean ${d.mean_human.toFixed(2)} (SD ${d.sd_human.toFixed(1)})`, `${d.ratings} ratings on ${d.comments} comments`, `${d.pct_ge4}% rated 4 or more; ${d.pct_ge5}% rated 5 or more`]))
+    .on('mouseleave', () => hideTip(c.tip));
+  c.g.selectAll('line.llm').data(rows).join('line').attr('class', 'hv-ref').attr('x1', (d) => x(d.llm) - 4).attr('x2', (d) => x(d.llm) + x.bandwidth() + 4)
+    .attr('y1', (d) => y(d.llm)).attr('y2', (d) => y(d.llm)).style('stroke-dasharray', 'none').style('stroke-width', 2).style('stroke', 'var(--color-fg)');
+  c.g.selectAll('text.val').data(rows).join('text').attr('class', 'val hv-bold').attr('x', (d) => x(d.llm) + x.bandwidth() / 2).attr('y', (d) => y(d.mean_human) - 6)
+    .attr('text-anchor', 'middle').text((d) => d.mean_human.toFixed(1));
+  c.g.selectAll('text.n').data(rows).join('text').attr('class', 'n').attr('x', (d) => x(d.llm) + x.bandwidth() / 2).attr('y', c.ih + 34)
+    .attr('text-anchor', 'middle').text((d) => `n = ${d.ratings}`);
+  legend(el, [{ color: col, label: 'Average human rating' }, { color: 'var(--color-fg)', label: "The LLM's own rating (a bar reaching the line matches it)" }]);
+});
+
+/* ---- Compare: share of raters endorsing a comment, by LLM rating ---- */
+dash.draw('c_line', (el) => {
+  const rows = okRows('c_calibration');
+  if (!rows) return placeholder(el, 'c_calibration');
+  const c = frame(el, 320, { t: 14, r: 14, b: 46, l: 52 }, 'Share of raters endorsing a comment at each LLM rating, for Agree/Disagree and for the 1 to 7 scale');
+  const x = d3.scalePoint(rows.map((r) => r.llm), [0, c.iw]).padding(0.4);
+  const y = d3.scaleLinear([0, 100], [c.ih, 0]);
+  grid(c.g, y, c.iw, [0, 25, 50, 75, 100]);
+  c.g.append('g').attr('transform', `translate(0,${c.ih})`).call(d3.axisBottom(x).tickSizeOuter(0));
+  c.g.append('g').call(d3.axisLeft(y).tickValues([0, 25, 50, 75, 100]).tickSizeOuter(0));
+  axisTitle(c, "LLM's rating of the comment", c.m.l + c.iw / 2, c.H - 8);
+  axisTitle(c, 'Raters endorsing (%)', 14, c.m.t + c.ih / 2, true);
+  const cols = palette();
+  const series = [{ key: 'agree_pct', label: 'Agree/Disagree: chose Agree', color: cols[0] }, { key: 'rating_ge4_pct', label: '1–7: rated 4 or more', color: cols[1] || cols[0] }, { key: 'rating_ge5_pct', label: '1–7: rated 5 or more', color: cols[2] || cols[0] }];
+  for (const s of series) {
+    const pts = rows.filter((r) => r[s.key] !== null && r[s.key] !== undefined);
+    c.g.append('path').datum(pts).attr('d', d3.line().x((d) => x(d.llm)).y((d) => y(d[s.key]))).style('fill', 'none').style('stroke', s.color).style('stroke-width', 2.5);
+    c.g.selectAll(`circle.${s.key}`).data(pts).join('circle').attr('class', s.key).attr('cx', (d) => x(d.llm)).attr('cy', (d) => y(d[s.key])).attr('r', 4.5).style('fill', s.color).style('stroke', 'var(--color-bg)').style('stroke-width', 1.5);
+  }
+  const slot = c.iw / rows.length;
+  c.g.selectAll('rect.hit').data(rows).join('rect').attr('class', 'hit').attr('x', (d) => x(d.llm) - slot / 2).attr('width', slot).attr('y', 0).attr('height', c.ih).style('fill', 'transparent')
+    .on('mousemove', (event, d) => showTip(el, c.tip, event, [`LLM rating ${d.llm}`,
+      d.agree_pct === null || d.agree_pct === undefined ? 'Agree/Disagree: no comments at this rating' : `Agree/Disagree: ${d.agree_pct}% agreed (${d.agree_comments} comments)`,
+      `1–7: ${d.rating_ge4_pct}% rated 4 or more, ${d.rating_ge5_pct}% rated 5 or more (${d.rating_comments} comments)`]))
+    .on('mouseleave', () => hideTip(c.tip));
+  legend(el, series.map((s) => ({ color: s.color, label: s.label })));
+});
+
+/* ---- tabs and filters (listeners only) ---- */
+function showTab(name) {
+  document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== name; });
+  document.querySelectorAll('.hv-tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  dash.setLink(name);
+}
+document.querySelectorAll('.hv-tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+document.querySelectorAll('select[data-state]').forEach((s) => s.addEventListener('change', () => { state[s.dataset.state] = s.value; dash.draw('tbody'); }));
+const startTab = (location.hash || '').replace('#', '');
+if (['agree', 'rating', 'compare'].includes(startTab)) showTab(startTab);
+
+__runAll();
+</script>
+</body>
+</html>
